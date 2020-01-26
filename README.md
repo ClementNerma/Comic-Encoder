@@ -30,10 +30,10 @@ Considering the following directory at `/home/me/book`:
 └── ZChapter_12
 ```
 
-Compile multiple chapters into volumes of 5 chapters each:
+### Compile multiple chapters into volumes of 5 chapters each
 
 ```
-> comicsplitter volumify --compile 5 -i /home/me/book -o ./build/
+> cargo run --release -- volumify --compile 5 -i /home/me/book -o ./build/
 
 [ 0m  0.000s] INFO: Going to compile chapters 1 to 12 (12 out of 12, 0 were ignored) into 3 volumes.
 [ 0m  0.004s] INFO: Successfully created volume 1 (chapters 01 to 05) in 'Volume-1.cbz', containing 0 pages.
@@ -47,10 +47,10 @@ build
 └── Volume-3.cbz
 ```
 
-Compile chapters into individual volumes:
+### Compile chapters into individual volumes
 
 ```shell
-> comicsplitter volumify --individual -i /home/me/book -o ./build/
+> cargo run --release -- volumify --individual -i /home/me/book -o ./build/
 
 [ 0m  0.000s] INFO: Going to compile chapters 1 to 12 (12 out of 12, 0 were ignored) into 12 volumes.
 [ 0m  0.002s] INFO: Successfully created volume file 'FirstChapter_1.cbz', containing 0 pages.
@@ -82,10 +82,10 @@ build
 └── ZChapter_12.cbz
 ```
 
-Compile multiple chapters into a single volume:
+### Compile multiple chapters into a single volume
 
 ```shell
-comicsplitter volumify --single -i /home/me/book -o Book.cbz
+cargo run --release -- volumify --single -i /home/me/book -o Book.cbz
 
 [ 0m  0.000s] INFO: Going to compile chapters 1 to 12 (12 out of 12, 0 were ignored) into 1 volume.
 [ 0m  0.004s] INFO: Successfully created volume 'Book.cbz' (chapters 01 to 12) in 'Book.cbz', containing 0 pages.
@@ -102,7 +102,7 @@ comicsplitter volumify --single -i /home/me/book -o Book.cbz
 * `--compress-losslessly`: compress all pictures losslessy - takes quite a bit of time, mostly useless on JPEG/PNG, but useful on BMP images
 * `--silent`: do not display anything, except error messages
 
-You can see additional parameters by calling `comicsplitter volumify --help`.
+You can see additional parameters by calling `cargo run --release -- volumify --help`.
 
 ## Installation
 
