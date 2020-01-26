@@ -1,0 +1,109 @@
+name: Comic Encoder
+version: "1.0.0"
+author: Clément Nerma <clement.nerma@gmail.com>
+about: Software for building and extracting comic archives
+args:
+  - silent:
+      global: true
+      long: silent
+      help: Do not display any message other than errors
+      conflicts_with:
+        - verbose
+        - debug
+
+  - verbose:
+      global: true
+      long: verbose
+      short: v
+      help: Display detailed informations
+      conflicts_with:
+        - silent
+        - debug
+  
+  - debug:
+      global: true
+      long: debug
+      help: Display extremely detailed informations
+      conflicts_with:
+        - silent
+        - verbose
+
+subcommands:
+  - volumify:
+      about: Compile chapter directories into volumes
+      args:
+        - compile:
+            long: compile
+            takes_value: true
+            help: Compile multiple chapters in single volumes (e.g. --compile=10 to compile 10 chapters per volume)
+        - individual:
+            long: individual
+            help: Compile each chapter in a single volume
+        - single:
+            long: single
+            help: Compile all chapters in a single volume
+
+        - output:
+            long: output
+            short: o
+            takes_value: true
+            required: true
+            help: Path to the directory where the volumes should be put or to the single volume
+
+        - chapters-dir:
+            long: chapters-dir
+            short: i
+            takes_value: true
+            required: true
+            help: Path to the directory containing the chapters
+
+        - create-output-dir:
+            long: create-output-dir
+            help: Creates output directory if it does not exist yet
+
+        - dirs-prefix:
+            long: dirs-prefix
+            short: d
+            takes_value: true
+            help: Prefix in the name of the chapter directories
+
+        - extended-image-formats:
+            long: extended-image-formats
+            short: extimg
+            help: Allow additional image formats that may not be supported by all readers (e.g. TIF / RAW / CR2 / ... files)
+
+        - start-chapter:
+            long: start-chapter
+            takes_value: true
+            help: Start at a specific chapter (ignore every chapter before this one)
+
+        - end-chapter:
+            long: end-chapter
+            takes_value: true
+            help: End at a specific chapter (ignore every chapter after this one)
+
+        - disable-natural-sorting:
+            long: disable-natural-sorting
+            short: n
+            help: Disable natural sorting (sorts using ASCII letters, a bit faster but unintuitive)
+
+        - show-chapters-path:
+            long: show-chapters-path
+            short: p
+            help: Show path for each chapter
+        
+        - display-full-names:
+            long: display-full-names
+            help: Display full file names (by default names are truncated above 50 characters)
+
+        - compress-losslessly:
+            long: compress-losslessly
+            help: Compress losslessly (a lot slower, save up about 5% of the final volumes' size)
+        
+      groups:
+        - method:
+            required: true
+            args:
+              - compile
+              - individual
+              - single

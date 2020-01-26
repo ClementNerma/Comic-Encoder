@@ -1,0 +1,437 @@
+use std::fs::{self, File};
+use std::path::{Path, PathBuf};
+use std::io::{Read, Write};
+use clap::ArgMatches;
+use zip::{ZipWriter, CompressionMethod};
+use zip::write::FileOptions;
+use super::error::VolumifyError;
+use crate::lib;
+
+/// Volumification method
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Method {
+    /// Compile multiple chapters in single volumes
+    Compile(u16),
+    /// Put each chapter in a single volume
+    Individual,
+    /// Compile all chapters in a single volume
+    Single
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Config<'a> {
+    /// The volumification method to use
+    method: Method,
+    /// Path to either the output directory or the output file, depending on the method
+    output: &'a Path,
+    /// Path to the directory containing all chapters
+    chapters_dir: &'a Path,
+    /// Create the output directory if it does not exist (or the output file's parent directory)
+    create_output_dir: bool,
+    /// If provided, ignore every chapter directory that does not start by the provided prefix
+    dirs_prefix: Option<&'a str>,
+    /// Start at a specific chapter number (chap. numbers start at 1)
+    start_chapter: Option<usize>,
+    /// Ends at a specific chapter number (chap. numbers start at 1)
+    end_chapter: Option<usize>,
+    /// Allows to use extended image formats that may not be supported by comic readers
+    extended_image_formats: bool,
+    /// Disables natural sort and rely on native UTF-8 sort instead, which gives an intuitive order of items (e.g. `folder 10` will be _before_ `folder 2`)
+    disable_nat_sort: bool,
+    /// Displays the path of each chapter before it is put in a volume
+    show_chapters_path: bool,
+    /// Display full output file names (by default they are truncated above 50 characters)
+    display_full_names: bool,
+    /// Compresses losslessly all images, which is a lot slower but usually saves around 5% of space
+    compress_losslessly: bool
+}
+
+/// Build a volume
+/// `volume` is the current volume number, starting at 1
+/// `vol_num_len` is the maximum string length of the volume number (e.g. 1520 volumes => `vol_num_len == 4`)
+/// `chapter_num_len` is like `vol_num_len` but for chapters
+/// `start_chapter` is the number of the first chapter in this volume
+/// `chapters` is a list of the chapters this volume contains. It's a vector of tuples containing: (chapter number, path to the chapter's directory, chapter's directory's file name)
+/// `config` is the configuration to use
+fn build(c: &Config<'_>, volume: usize, vol_num_len: usize, chapter_num_len: usize, start_chapter: usize, chapters: &Vec<(usize, PathBuf, String)>) -> Result<PathBuf, VolumifyError> {
+    // Get the file name for this volume
+    let file_name = match c.method {
+        Method::Compile(_) => format!("Volume-{:0vol_num_len$}.cbz", volume, vol_num_len = vol_num_len),
+        Method::Individual => {
+            assert_eq!(chapters.len(), 1, "Internal error: individual chapter's volume does contain exactly 1 chapter!");
+            format!("{}.cbz", chapters[0].2)
+        },
+        Method::Single => c.output.file_name().unwrap().to_str().unwrap().to_owned()
+    };
+
+    // Get the path to this volume's future ZIP archive
+    let zip_path = match c.method {
+        Method::Compile(_) | Method::Individual => c.output.join(Path::new(&file_name)),
+        Method::Single => c.output.to_path_buf()
+    };
+
+    // Create a ZIP file to this path
+    let zip_file = File::create(zip_path.clone()).map_err(|err| VolumifyError::FailedToCreateVolumeFile(volume, err))?;
+
+    let mut zip_writer = ZipWriter::new(zip_file);
+
+    // Consider compression
+    let zip_options = FileOptions::default().compression_method(if c.compress_losslessly {
+        CompressionMethod::Deflated
+    } else {
+        CompressionMethod::Stored
+    });
+
+    // Determine the common display name for individual chapters
+    let display_name_individual = match c.method {
+        Method::Individual => Some(match c.display_full_names {
+            true => format!("'{}'", chapters[0].2.clone()),
+            false => if chapters[0].2.len() <= 50 {
+                format!("'{}'", chapters[0].2)
+            } else {
+                let cut: String = chapters[0].2.chars().take(50).collect();
+                format!("'{}...'", cut)
+            }
+        }),
+        _ => None
+    };
+
+    // Determine how to display the volume's name in STDOUT
+    let volume_display_name = match c.method {
+        Method::Compile(_) => format!("{:0vol_num_len$}", volume, vol_num_len = vol_num_len),
+        Method::Individual => format!("'{}'", display_name_individual.as_ref().unwrap()),
+        Method::Single => format!("'{}'", file_name)
+    };
+
+    // Prepare a buffer to store the picture's files
+    let mut buffer = Vec::new();
+    
+    // Count the number of pictures in this volume
+    let mut pics_counter = 0;
+
+    // Treat each chapter of the volume
+    for (chapter, chapter_path, chapter_name) in chapters.iter() {
+        // Determine how to display the chapter's title in STDOUT
+        let chapter_display_name = match c.method == Method::Individual {
+            false => format!("{:0chapter_num_len$}", chapter, chapter_num_len = chapter_num_len),
+            true => format!("'{}'", display_name_individual.as_ref().unwrap())
+        };
+
+        trace!("Reading files recursively from chapter {}'s directory '{}'...", chapter, chapter_name);
+
+        // Get the list of all image files in the chapter's directory, recursively
+        let mut chapter_pics = lib::readdir_files_recursive(&chapter_path, Some(&|path: &PathBuf| lib::has_image_ext(path, c.extended_image_formats)))
+            .map_err(|err| VolumifyError::FailedToListChapterDirectoryFiles {
+                volume, chapter: *chapter, chapter_path: chapter_path.to_path_buf(), err
+            })?;
+
+        trace!("Found '{}' picture files from chapter {}'s directory '{}'. Sorting them...", chapter_pics.len(), chapter, chapter_name);
+
+        // If asked, show the path to the chapter's directory
+        if c.show_chapters_path {
+            info!("Adding chapter {} to volume {} from directory '{}'", chapter_display_name, volume_display_name, chapter_name);
+        } else if c.method != Method::Individual {
+            debug!("Adding chapter {} to volume {}...", chapter_display_name, volume_display_name);
+        }
+
+        // Sort the image files by name
+        if c.disable_nat_sort {
+            chapter_pics.sort();
+        } else {
+            chapter_pics.sort_by(lib::natural_paths_cmp);
+        };
+
+        // Disable mutability for this variable
+        let chapter_path = chapter_path;
+
+        // Determine the name of this chapter's directory in the volume's ZIP
+        let zip_dir_name = match c.method == Method::Individual {
+            false => format!(
+                "Vol_{:0vol_num_len$}_Chapter_{:0chapter_num_len$}",
+                volume, chapter, vol_num_len = vol_num_len, chapter_num_len = chapter_num_len
+            ),
+
+            true => chapters[0].2.clone()
+        };
+
+        trace!("Adding directory '{}' to ZIP archive...", zip_dir_name);
+
+        // Create an empty directory for this chapter in the volume's ZIP
+        zip_writer.add_directory(&zip_dir_name, zip_options).map_err(|err| VolumifyError::FailedToCreateChapterDirectoryInZip {
+            volume, chapter: *chapter, dir_name: zip_dir_name.to_owned(), err
+        })?;
+
+        // Compute the length of displayable picture number (e.g. 1520 pictures will give 4)
+        let pic_num_len = chapter_pics.len().to_string().len();
+
+        // Iterate over each page
+        for (page_nb, file) in chapter_pics.iter().enumerate() {
+            // Determine the name of the file in the ZIP directory
+            let name_in_zip = match c.method == Method::Individual {
+                false => format!(
+                    "Vol_{:0vol_num_len$}_Chapter_{:0chapter_num_len$}_Pic_{:0pic_num_len$}.{file_ext}",
+                    volume,
+                    chapter,
+                    page_nb,
+                    file_ext = file.extension().unwrap().to_str().ok_or_else(
+                        || VolumifyError::ItemHasInvalidUTF8Name(file.file_name().unwrap().to_os_string())
+                    )?,
+                    vol_num_len = vol_num_len,
+                    chapter_num_len = chapter_num_len,
+                    pic_num_len = pic_num_len
+                ),
+
+                true => format!(
+                    "{}_Pic_{:0pic_num_len$}.{file_ext}",
+                    volume_display_name,
+                    page_nb,
+                    file_ext = file.extension().unwrap().to_str().ok_or_else(
+                        || VolumifyError::ItemHasInvalidUTF8Name(file.file_name().unwrap().to_os_string())
+                    )?,
+                    pic_num_len = pic_num_len
+                )
+            };
+
+            trace!(
+                "Adding picture {:0pic_num_len$} from chapter {} to volume {} as '{}/{}'...",
+                page_nb, chapter_display_name, volume_display_name, zip_dir_name, name_in_zip, pic_num_len = pic_num_len
+            );
+
+            // Determine the path of the file in the ZIP directory
+            let path_in_zip = &Path::new(&zip_dir_name).join(Path::new(&name_in_zip));
+
+            // Create the empty file in the archive
+            zip_writer.start_file_from_path(path_in_zip, zip_options)
+                .map_err(|err| VolumifyError::FailedToCreateImageFileInZip {
+                    volume, chapter: *chapter, file_path: path_in_zip.to_path_buf(), err
+                })?;
+
+            // Read the real file
+            let mut f = File::open(file).map_err(|err| VolumifyError::FailedToOpenImage {
+                volume, chapter: *chapter, chapter_path: chapter_path.to_path_buf(), image_path: file.to_path_buf(), err
+            })?;
+
+            f.read_to_end(&mut buffer).map_err(|err| VolumifyError::FailedToReadImage {
+                volume, chapter: *chapter, chapter_path: chapter_path.to_path_buf(), image_path: file.to_path_buf(), err
+            })?;
+
+            // Write the file to the ZIP archive
+            zip_writer.write_all(&buffer).map_err(|err| VolumifyError::FailedToWriteImageFileToZip {
+                volume, chapter: *chapter, chapter_path: chapter_path.to_path_buf(), image_path: file.to_path_buf(), err
+            })?;
+
+            buffer.clear();
+
+            pics_counter += 1;
+        }
+    }
+
+    trace!("Closing ZIP archive...");
+
+    // Close the archive
+    zip_writer.finish().map_err(|err| VolumifyError::FailedToCloseZipArchive(volume, err))?;
+
+    // Get the eventually truncated file name to display in the success message
+    let success_display_file_name = match file_name.len() {
+        0..=50 => file_name.clone(),
+        _ => format!("{}...", file_name.chars().take(50).collect::<String>())
+    };
+
+    if c.method == Method::Individual {
+        info!("Successfully created volume file '{}', containing {} pages.", success_display_file_name, pics_counter);
+    } else {
+        info!(
+            "Successfully created volume {} (chapters {:0chapter_num_len$} to {:0chapter_num_len$}) in '{}', containing {} pages.",
+            volume_display_name,
+            start_chapter,
+            start_chapter + chapters.len() - 1,
+            success_display_file_name,
+            pics_counter,
+            chapter_num_len = chapter_num_len
+        );
+    }
+    
+    Ok(zip_path)
+}
+
+/// Perform a volumification using the provided configuration object
+pub fn volumify(c: &Config) -> Result<Vec<PathBuf>, VolumifyError> {
+    let chap_per_vol = match c.method {
+        Method::Compile(chap_per_vol) => chap_per_vol,
+        Method::Individual => 1,
+        Method::Single => std::u16::MAX
+    };
+
+    if chap_per_vol == 0 {
+        Err(VolumifyError::AtLeast1ChapterPerVolume)?
+    }
+
+    if let Some(start_chapter) = c.start_chapter {
+        if start_chapter == 0 {
+            Err(VolumifyError::InvalidStartChapter)?
+        }
+    }
+
+    if let Some(end_chapter) = c.end_chapter {
+        if end_chapter == 0 {
+            Err(VolumifyError::InvalidEndChapter)?
+        }
+    }
+
+    if let (Some(start_chapter), Some(end_chapter)) = (c.start_chapter, c.end_chapter) {
+        if end_chapter < start_chapter {
+            Err(VolumifyError::StartChapterCannotBeHigherThanEndChapter)?
+        }
+    }
+
+    if !c.chapters_dir.is_dir() {
+        Err(VolumifyError::ChaptersDirectoryNotFound)?
+    }
+
+    match c.method {
+        Method::Compile(_) | Method::Individual => {
+            if !c.output.is_dir() {
+                if c.create_output_dir {
+                    fs::create_dir_all(c.output).map_err(|err| VolumifyError::FailedToCreateOutputDirectory(err))?
+                } else {
+                    Err(VolumifyError::OutputDirectoryNotFound)?
+                }
+            }
+        },
+
+        Method::Single => {
+            if c.output.is_dir() {
+                Err(VolumifyError::OutputFileIsADirectory)?
+            }
+
+            let file_name = c.output.file_name().unwrap();
+
+            if let None = file_name.to_str() {
+                Err(VolumifyError::OutputFileHasInvalidUTF8Name(file_name.to_os_string()))?
+            }
+
+            let parent = c.output.parent().ok_or(VolumifyError::OutputDirectoryNotFound)?;
+
+            if !parent.is_dir() {
+                if c.create_output_dir {
+                    fs::create_dir_all(parent).map_err(|err| VolumifyError::FailedToCreateOutputDirectory(err))?
+                } else {
+                    Err(VolumifyError::OutputDirectoryNotFound)?
+                }
+            }
+        }
+    }
+
+    let mut chapter_dirs = vec![];
+
+    trace!("Reading chapter directories...");
+
+    for entry in fs::read_dir(c.chapters_dir).map_err(|err| VolumifyError::FailedToReadChaptersDirectory(err))? {
+        let entry = entry.map_err(|err| VolumifyError::FailedToReadChaptersDirectory(err))?;
+        let path = entry.path();
+
+        if path.is_dir() {
+            let entry_name = entry.file_name().into_string().map_err(|_| VolumifyError::ItemHasInvalidUTF8Name(entry.file_name()))?;
+
+            if c.dirs_prefix.map(|prefix| entry_name.starts_with(prefix)).unwrap_or(true) {
+                chapter_dirs.push((path, entry_name));
+            }
+        }
+    }
+
+    trace!("Sorting chapter directories by name...");
+
+    if c.disable_nat_sort {
+        chapter_dirs.sort_by(|a, b| a.0.cmp(&b.0));
+    } else {
+        chapter_dirs.sort_by(|a, b| lib::natural_paths_cmp(&a.0, &b.0));
+    };
+
+    let chapter_dirs = chapter_dirs;
+
+    let mut volume = 1;
+    let mut volume_chapters = vec![];
+    let mut volume_start_chapter = 1;
+
+    let untrimmed_volumes = lib::ceil_div(chapter_dirs.len(), chap_per_vol.into());
+
+    let vol_num_len = untrimmed_volumes.to_string().len();
+    let chapter_num_len = chapter_dirs.len().to_string().len();
+
+    let start_chapter = c.start_chapter.unwrap_or(1) - 1;
+    let end_chapter = match c.method {
+        Method::Compile(_) | Method::Individual => c.end_chapter.unwrap_or(chapter_dirs.len()),
+        Method::Single => std::cmp::min(c.end_chapter.unwrap_or(chapter_dirs.len()), start_chapter + usize::from(chap_per_vol))
+    };
+
+    let chapter_len = end_chapter - start_chapter;
+
+    let volumes = lib::ceil_div(chapter_len, chap_per_vol.into());
+
+    info!(
+        "Going to compile chapter{} {} to {} ({} out of {}, {} were ignored) into {} volume{}.",
+        if chapter_len > 0 { "s" } else { "" },
+        start_chapter + 1,
+        end_chapter,
+        chapter_len,
+        chapter_dirs.len(),
+        chapter_dirs.len() - chapter_len,
+        volumes,
+        if volumes > 1 { "s" } else { "" }
+    );
+
+    trace!("Building chapters list for all volumes...");
+
+    let mut output_files = vec![];
+
+    for (chapter, (path, chapter_name)) in chapter_dirs.into_iter().skip(start_chapter).take(chapter_len).enumerate() {
+        volume_chapters.push((chapter + 1, path, chapter_name));
+
+        if volume_chapters.len() == chap_per_vol.into() {
+            output_files.push(build(c, volume, vol_num_len, chapter_num_len, volume_start_chapter, &volume_chapters)?);
+            volume_start_chapter += volume_chapters.len();
+            volume_chapters = vec![];
+            volume += 1;
+        }
+    }
+
+    if volume_chapters.len() != 0 {
+        output_files.push(build(c, volume, vol_num_len, chapter_num_len, volume_start_chapter, &volume_chapters)?);
+    }
+
+    if c.method == Method::Single {
+        assert!(output_files.len() <= 1, "Internal error: more than 1 volume was produced for a single output file.");
+    }
+
+    Ok(output_files)
+}
+
+/// Perform a volumification using the provided command-line arguments
+pub fn from_args(args: &ArgMatches) -> Result<Vec<PathBuf>, VolumifyError> {
+    // Determine the volumification method
+    let method = if let Some(chapters_per_vol) = args.value_of("compile") {
+        Method::Compile(str::parse::<u16>(chapters_per_vol).map_err(|_| VolumifyError::InvalidNumberOfChaptersPerVolume)?)
+    } else if args.is_present("individual") {
+        Method::Individual
+    } else if args.is_present("single") {
+        Method::Single
+    } else {
+        unreachable!()
+    };
+
+    // Perform the volumification
+    volumify(&Config {
+        method,
+        output: Path::new(args.value_of("output").unwrap()),
+        chapters_dir: Path::new(args.value_of("chapters-dir").unwrap()),
+        create_output_dir: args.is_present("create-output-dir"),
+        dirs_prefix: args.value_of("dirs-prefix"),
+        start_chapter: args.value_of("start-chapter").map(|chap| str::parse::<usize>(chap)).transpose().map_err(|_| VolumifyError::InvalidStartChapter)?,
+        end_chapter: args.value_of("end-chapter").map(|chap| str::parse::<usize>(chap)).transpose().map_err(|_| VolumifyError::InvalidEndChapter)?,
+        extended_image_formats: args.is_present("extended-image-formats"),
+        disable_nat_sort: args.is_present("disable-natural-sorting"),
+        show_chapters_path: args.is_present("show-chapters-path"),
+        display_full_names: args.is_present("display-full-names"),
+        compress_losslessly: args.is_present("compress-losslessly")
+    })
+}
