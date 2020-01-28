@@ -1,6 +1,7 @@
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::io::{Read, Write};
+use std::time::Instant;
 use clap::ArgMatches;
 use zip::{ZipWriter, CompressionMethod};
 use zip::write::FileOptions;
@@ -54,6 +55,9 @@ pub struct Config<'a> {
 /// `chapters` is a list of the chapters this volume contains. It's a vector of tuples containing: (chapter number, path to the chapter's directory, chapter's directory's file name)
 /// `config` is the configuration to use
 fn build(c: &Config<'_>, volume: usize, vol_num_len: usize, chapter_num_len: usize, start_chapter: usize, chapters: &Vec<(usize, PathBuf, String)>) -> Result<PathBuf, EncodingError> {
+    // Get timestamp to measure performance
+    let build_started = Instant::now();
+
     // Get the file name for this volume
     let file_name = match c.method {
         Method::Compile(_) => format!("Volume-{:0vol_num_len$}.cbz", volume, vol_num_len = vol_num_len),
@@ -237,16 +241,23 @@ fn build(c: &Config<'_>, volume: usize, vol_num_len: usize, chapter_num_len: usi
         _ => format!("{}...", file_name.chars().take(50).collect::<String>())
     };
 
+    // Compute elapsed time
+    let elapsed = build_started.elapsed();
+
+    // Format elapsed time
+    let elapsed = format!("{}.{:03} s", elapsed.as_secs(), elapsed.subsec_millis());
+
     if c.method == Method::Individual {
-        info!("Successfully created volume file '{}', containing {} pages.", success_display_file_name, pics_counter);
+        info!("Successfully created volume file '{}', containing {} pages in {}.", success_display_file_name, pics_counter, elapsed);
     } else {
         info!(
-            "Successfully created volume {} (chapters {:0chapter_num_len$} to {:0chapter_num_len$}) in '{}', containing {} pages.",
+            "Successfully created volume {} (chapters {:0chapter_num_len$} to {:0chapter_num_len$}) in '{}', containing {} pages in {}.",
             volume_display_name,
             start_chapter,
             start_chapter + chapters.len() - 1,
             success_display_file_name,
             pics_counter,
+            elapsed,
             chapter_num_len = chapter_num_len
         );
     }
