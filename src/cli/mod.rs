@@ -1,2 +1,2 @@
 pub mod error;
-pub mod volumify;
+pub mod encode;

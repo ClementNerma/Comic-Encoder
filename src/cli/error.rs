@@ -19,8 +19,8 @@ impl fmt::Display for GlobalError {
     }
 }
 
-/// Error during in the "volumify" action
-pub enum VolumifyError {
+/// Error during in the "encode" action
+pub enum EncodingError {
     MissingOutputPath,
     InvalidNumberOfChaptersPerVolume,
     InvalidStartChapter,
@@ -44,7 +44,7 @@ pub enum VolumifyError {
     FailedToCloseZipArchive(usize, ZipError)
 }
 
-impl fmt::Display for VolumifyError {
+impl fmt::Display for EncodingError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", match self {
             Self::MissingOutputPath =>
