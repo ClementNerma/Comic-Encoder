@@ -303,7 +303,7 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
         Method::Compile(_) | Method::Individual => {
             if !c.output.is_dir() {
                 if c.create_output_dir {
-                    fs::create_dir_all(c.output).map_err(|err| EncodingError::FailedToCreateOutputDirectory(err))?
+                    fs::create_dir_all(c.output).map_err(EncodingError::FailedToCreateOutputDirectory)?
                 } else {
                     Err(EncodingError::OutputDirectoryNotFound)?
                 }
@@ -325,7 +325,7 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
 
             if !parent.is_dir() {
                 if c.create_output_dir {
-                    fs::create_dir_all(parent).map_err(|err| EncodingError::FailedToCreateOutputDirectory(err))?
+                    fs::create_dir_all(parent).map_err(EncodingError::FailedToCreateOutputDirectory)?
                 } else {
                     Err(EncodingError::OutputDirectoryNotFound)?
                 }
@@ -337,8 +337,8 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
 
     trace!("Reading chapter directories...");
 
-    for entry in fs::read_dir(c.chapters_dir).map_err(|err| EncodingError::FailedToReadChaptersDirectory(err))? {
-        let entry = entry.map_err(|err| EncodingError::FailedToReadChaptersDirectory(err))?;
+    for entry in fs::read_dir(c.chapters_dir).map_err(EncodingError::FailedToReadChaptersDirectory)? {
+        let entry = entry.map_err(EncodingError::FailedToReadChaptersDirectory)?;
         let path = entry.path();
 
         if path.is_dir() {
