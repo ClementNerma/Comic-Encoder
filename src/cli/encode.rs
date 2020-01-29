@@ -265,8 +265,8 @@ fn build(c: &Config<'_>, volume: usize, vol_num_len: usize, chapter_num_len: usi
     Ok(zip_path)
 }
 
-/// Perform a encoding using the provided configuration object
-pub fn volumify(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
+/// Perform an encoding using the provided configuration object
+pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
     let chap_per_vol = match c.method {
         Method::Compile(chap_per_vol) => chap_per_vol,
         Method::Individual => 1,
@@ -417,7 +417,7 @@ pub fn volumify(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
     Ok(output_files)
 }
 
-/// Perform a encoding using the provided command-line arguments
+/// Perform an encoding using the provided command-line arguments
 pub fn from_args(args: &ArgMatches) -> Result<Vec<PathBuf>, EncodingError> {
     // Determine the encoding method
     let method = if let Some(chapters_per_vol) = args.value_of("compile") {
@@ -431,7 +431,7 @@ pub fn from_args(args: &ArgMatches) -> Result<Vec<PathBuf>, EncodingError> {
     };
 
     // Perform the encoding
-    volumify(&Config {
+    encode(&Config {
         method,
         output: Path::new(args.value_of("output").unwrap()),
         chapters_dir: Path::new(args.value_of("chapters-dir").unwrap()),
