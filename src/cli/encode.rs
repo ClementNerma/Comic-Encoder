@@ -20,6 +20,7 @@ pub enum Method {
     Single
 }
 
+/// Encoding configuration
 #[derive(Debug, PartialEq, Eq)]
 pub struct Config<'a> {
     /// The encoding method to use
@@ -276,6 +277,7 @@ fn build(c: &Config<'_>, output: &'_ Path, volume: usize, vol_num_len: usize, ch
 
 /// Perform an encoding using the provided configuration object
 pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
+    // Get the number of chapters to put in each volume
     let chap_per_vol = match c.method {
         Method::Compile(chap_per_vol) => chap_per_vol,
         Method::Individual => 1,
@@ -308,6 +310,7 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
         Err(EncodingError::ChaptersDirectoryNotFound)?
     }
 
+    // Create the output directory if needed, and get the output path
     let output = match c.output {
         Some(output) => {
             match c.method {
@@ -348,22 +351,28 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
         },
 
         None => match c.method {
+            // Output directory = input directory
             Method::Compile(_) | Method::Individual => c.chapters_dir.to_path_buf(),
+            // Output directory = input file with ".cbz" extension
             Method::Single => c.chapters_dir.join(Path::new(c.chapters_dir.file_name().unwrap_or(&OsString::from("root"))).with_extension("cbz"))
         }
     };
 
+    // List of chapter directories
     let mut chapter_dirs = vec![];
 
     trace!("Reading chapter directories...");
 
+    // Iterate over all items in the input directory
     for entry in fs::read_dir(c.chapters_dir).map_err(EncodingError::FailedToReadChaptersDirectory)? {
         let entry = entry.map_err(EncodingError::FailedToReadChaptersDirectory)?;
         let path = entry.path();
 
+        // Ignore files
         if path.is_dir() {
             let entry_name = entry.file_name().into_string().map_err(|_| EncodingError::ItemHasInvalidUTF8Name(entry.file_name()))?;
 
+            // Ignore directories not starting by the provided prefix
             if c.dirs_prefix.map(|prefix| entry_name.starts_with(prefix)).unwrap_or(true) {
                 chapter_dirs.push((path, entry_name));
             }
@@ -376,32 +385,49 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
         chapter_dirs.sort_by(|a, b| a.0.cmp(&b.0));
     } else {
         chapter_dirs.sort_by(|a, b| lib::natural_paths_cmp(&a.0, &b.0));
-    };
+    }
 
+    // Disable mutability for this variable
     let chapter_dirs = chapter_dirs;
 
+    // Current volume
     let mut volume = 1;
+
+    // List of chapter directories of the current volume
     let mut volume_chapters = vec![];
+
+    // First chapter of current volume
     let mut volume_start_chapter = 1;
 
+    // Number of volumes to make, before considering start and end chapter
+    // It is used to determine the number of digits volumes should be displayed with
     let untrimmed_volumes = lib::ceil_div(chapter_dirs.len(), chap_per_vol.into());
-
     let vol_num_len = untrimmed_volumes.to_string().len();
+
+    // Determine the number of digits for chapters
     let chapter_num_len = chapter_dirs.len().to_string().len();
 
     let start_chapter = c.start_chapter.unwrap_or(1) - 1;
+
     let end_chapter = match c.method {
         Method::Compile(_) | Method::Individual => c.end_chapter.unwrap_or(chapter_dirs.len()),
+
+        // End chapter cannot exceed the number of chapters per volume
         Method::Single => std::cmp::min(c.end_chapter.unwrap_or(chapter_dirs.len()), start_chapter + usize::from(chap_per_vol))
     };
+
+    // End chapter cannot exceed the number of existing chapter directories minus the start chapter
+    let end_chapter = std::cmp::min(end_chapter, chapter_dirs.len() - start_chapter);
 
     if end_chapter == 0 {
         warn!("No chapter found. Nothing to do.");
         return Ok(vec![]);
     }
 
+    // Determine the real number of chapters to encode
     let chapter_len = end_chapter - start_chapter;
 
+    // Determine the real number of volumes to create
     let volumes = lib::ceil_div(chapter_len, chap_per_vol.into());
 
     info!(
@@ -418,11 +444,15 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
 
     trace!("Building chapters list for all volumes...");
 
+    // The list of all created volume files
     let mut output_files = vec![];
 
+    // Iterate over chapters
     for (chapter, (path, chapter_name)) in chapter_dirs.into_iter().skip(start_chapter).take(chapter_len).enumerate() {
+        // Add this chapter to the current volume
         volume_chapters.push((chapter + 1, path, chapter_name));
 
+        // If this volume contains enough chapters, build it
         if volume_chapters.len() == chap_per_vol.into() {
             output_files.push(build(c, &output, volume, vol_num_len, chapter_num_len, volume_start_chapter, &volume_chapters)?);
             volume_start_chapter += volume_chapters.len();
@@ -431,10 +461,12 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
         }
     }
 
+    // If there are remaining chapters, build a last volume with them
     if volume_chapters.len() != 0 {
         output_files.push(build(c, &output, volume, vol_num_len, chapter_num_len, volume_start_chapter, &volume_chapters)?);
     }
 
+    // Only 1 volume should be created when building single volume
     if c.method == Method::Single {
         assert!(output_files.len() <= 1, "Internal error: more than 1 volume was produced for a single output file.");
     }
