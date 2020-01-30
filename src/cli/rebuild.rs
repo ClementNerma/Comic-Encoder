@@ -83,7 +83,7 @@ pub fn rebuild(c: &Config) -> Result<Vec<PathBuf>, RebuildingError> {
         disable_nat_sort: c.disable_nat_sort
     }, true).map_err(RebuildingError::DecodingError)?;
 
-    info!("==> Encoding images in a book...");
+    info!("==> Encoding images in a book ({})...", if c.compress_losslessly { "compression enabled" } else { "no compression"});
 
     // Put all images from the input comic in a single comic file
     let path = encode::encode(&encode::Config {
