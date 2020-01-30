@@ -40,7 +40,7 @@ With `comicenc` being an alias for `cargo run --release --`.
 ### Compile multiple chapters into volumes of 5 chapters each
 
 ```
-> comicenc volumify --compile 5 -i /home/me/book -o ./build/
+> comicenc encode --compile 5 -i /home/me/book -o ./build/
 ```
 
 ```
@@ -53,7 +53,7 @@ build
 ### Compile chapters into individual volumes
 
 ```shell
-> comicenc volumify --individual -i /home/me/book -o ./build/
+> comicenc encode --individual -i /home/me/book -o ./build/
 ```
 
 ```
@@ -75,7 +75,7 @@ build
 ### Compile multiple chapters into a single volume
 
 ```shell
-comicenc volumify --single -i /home/me/book -o Book.cbz
+comicenc encode --single -i /home/me/book -o Book.cbz
 ```
 
 ### Rebuild an existing comic
@@ -96,7 +96,7 @@ This will create a `my-book.cbz` file, a format which is more widely supported b
 * `--compress-losslessly`: compress all pictures losslessy - takes quite a bit of time, mostly useless on JPEG/PNG, but useful on BMP images
 * `--silent`: do not display anything, except error messages
 
-You can see additional parameters by calling `comicenc volumify --help`.
+You can see additional parameters by calling the related subcommand with `--help`.
 
 ## Installation
 
