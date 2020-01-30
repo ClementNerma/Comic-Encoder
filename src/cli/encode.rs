@@ -82,7 +82,7 @@ fn build(c: &Config<'_>, is_rebuilding: bool, output: &'_ Path, volume: usize, v
     };
 
     // Fail if the target file already exists and '--overwrite' has not been specified
-    if c.overwrite && zip_path.exists() {
+    if !c.overwrite && zip_path.exists() {
         Err(EncodingError::OutputFileAlreadyExists(volume, zip_path.clone()))?
     }
 
