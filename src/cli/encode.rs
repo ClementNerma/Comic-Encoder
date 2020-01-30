@@ -1,5 +1,6 @@
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
+use std::ffi::OsString;
 use std::io::{Read, Write};
 use std::time::Instant;
 use clap::ArgMatches;
@@ -23,10 +24,10 @@ pub enum Method {
 pub struct Config<'a> {
     /// The encoding method to use
     method: Method,
-    /// Path to either the output directory or the output file, depending on the method
-    output: &'a Path,
     /// Path to the directory containing all chapters
     chapters_dir: &'a Path,
+    /// Path to either the output directory or the output file, depending on the method
+    output: Option<&'a Path>,
     /// Create the output directory if it does not exist (or the output file's parent directory)
     create_output_dir: bool,
     /// If provided, ignore every chapter directory that does not start by the provided prefix
@@ -48,13 +49,14 @@ pub struct Config<'a> {
 }
 
 /// Build a volume
+/// `output` is the actuel output path
 /// `volume` is the current volume number, starting at 1
 /// `vol_num_len` is the maximum string length of the volume number (e.g. 1520 volumes => `vol_num_len == 4`)
 /// `chapter_num_len` is like `vol_num_len` but for chapters
 /// `start_chapter` is the number of the first chapter in this volume
 /// `chapters` is a list of the chapters this volume contains. It's a vector of tuples containing: (chapter number, path to the chapter's directory, chapter's directory's file name)
 /// `config` is the configuration to use
-fn build(c: &Config<'_>, volume: usize, vol_num_len: usize, chapter_num_len: usize, start_chapter: usize, chapters: &Vec<(usize, PathBuf, String)>) -> Result<PathBuf, EncodingError> {
+fn build(c: &Config<'_>, output: &'_ Path, volume: usize, vol_num_len: usize, chapter_num_len: usize, start_chapter: usize, chapters: &Vec<(usize, PathBuf, String)>) -> Result<PathBuf, EncodingError> {
     // Get timestamp to measure performance
     let build_started = Instant::now();
 
@@ -65,13 +67,13 @@ fn build(c: &Config<'_>, volume: usize, vol_num_len: usize, chapter_num_len: usi
             assert_eq!(chapters.len(), 1, "Internal error: individual chapter's volume does contain exactly 1 chapter!");
             format!("{}.cbz", chapters[0].2)
         },
-        Method::Single => c.output.file_name().unwrap().to_str().unwrap().to_owned()
+        Method::Single => output.file_name().unwrap().to_str().unwrap().to_owned()
     };
 
     // Get the path to this volume's future ZIP archive
     let zip_path = match c.method {
-        Method::Compile(_) | Method::Individual => c.output.join(Path::new(&file_name)),
-        Method::Single => c.output.to_path_buf()
+        Method::Compile(_) | Method::Individual => output.join(Path::new(&file_name)),
+        Method::Single => output.to_path_buf()
     };
 
     // Create a ZIP file to this path
@@ -299,39 +301,50 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
         Err(EncodingError::ChaptersDirectoryNotFound)?
     }
 
-    match c.method {
-        Method::Compile(_) | Method::Individual => {
-            if !c.output.is_dir() {
-                if c.create_output_dir {
-                    fs::create_dir_all(c.output).map_err(EncodingError::FailedToCreateOutputDirectory)?
-                } else {
-                    Err(EncodingError::OutputDirectoryNotFound)?
+    let output = match c.output {
+        Some(output) => {
+            match c.method {
+                Method::Compile(_) | Method::Individual => {
+                    if !output.is_dir() {
+                        if c.create_output_dir {
+                            fs::create_dir_all(output).map_err(EncodingError::FailedToCreateOutputDirectory)?
+                        } else {
+                            Err(EncodingError::OutputDirectoryNotFound)?
+                        }
+                    }
+                },
+
+                Method::Single => {
+                    if output.is_dir() {
+                        Err(EncodingError::OutputFileIsADirectory)?
+                    }
+
+                    let file_name = output.file_name().unwrap();
+
+                    if let None = file_name.to_str() {
+                        Err(EncodingError::OutputFileHasInvalidUTF8Name(file_name.to_os_string()))?
+                    }
+
+                    let parent = output.parent().ok_or(EncodingError::OutputDirectoryNotFound)?;
+
+                    if !parent.is_dir() {
+                        if c.create_output_dir {
+                            fs::create_dir_all(parent).map_err(EncodingError::FailedToCreateOutputDirectory)?
+                        } else {
+                            Err(EncodingError::OutputDirectoryNotFound)?
+                        }
+                    }
                 }
             }
+
+            output.to_path_buf()
         },
 
-        Method::Single => {
-            if c.output.is_dir() {
-                Err(EncodingError::OutputFileIsADirectory)?
-            }
-
-            let file_name = c.output.file_name().unwrap();
-
-            if let None = file_name.to_str() {
-                Err(EncodingError::OutputFileHasInvalidUTF8Name(file_name.to_os_string()))?
-            }
-
-            let parent = c.output.parent().ok_or(EncodingError::OutputDirectoryNotFound)?;
-
-            if !parent.is_dir() {
-                if c.create_output_dir {
-                    fs::create_dir_all(parent).map_err(EncodingError::FailedToCreateOutputDirectory)?
-                } else {
-                    Err(EncodingError::OutputDirectoryNotFound)?
-                }
-            }
+        None => match c.method {
+            Method::Compile(_) | Method::Individual => c.chapters_dir.to_path_buf(),
+            Method::Single => c.chapters_dir.join(Path::new(c.chapters_dir.file_name().unwrap_or(&OsString::from("root"))).with_extension("cbz"))
         }
-    }
+    };
 
     let mut chapter_dirs = vec![];
 
@@ -399,7 +412,7 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
         volume_chapters.push((chapter + 1, path, chapter_name));
 
         if volume_chapters.len() == chap_per_vol.into() {
-            output_files.push(build(c, volume, vol_num_len, chapter_num_len, volume_start_chapter, &volume_chapters)?);
+            output_files.push(build(c, &output, volume, vol_num_len, chapter_num_len, volume_start_chapter, &volume_chapters)?);
             volume_start_chapter += volume_chapters.len();
             volume_chapters = vec![];
             volume += 1;
@@ -407,7 +420,7 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
     }
 
     if volume_chapters.len() != 0 {
-        output_files.push(build(c, volume, vol_num_len, chapter_num_len, volume_start_chapter, &volume_chapters)?);
+        output_files.push(build(c, &output, volume, vol_num_len, chapter_num_len, volume_start_chapter, &volume_chapters)?);
     }
 
     if c.method == Method::Single {
@@ -433,8 +446,8 @@ pub fn from_args(args: &ArgMatches) -> Result<Vec<PathBuf>, EncodingError> {
     // Perform the encoding
     encode(&Config {
         method,
-        output: Path::new(args.value_of("output").unwrap()),
         chapters_dir: Path::new(args.value_of("chapters-dir").unwrap()),
+        output: args.value_of("output").map(|out| Path::new(out)),
         create_output_dir: args.is_present("create-output-dir"),
         dirs_prefix: args.value_of("dirs-prefix"),
         start_chapter: args.value_of("start-chapter").map(|chap| str::parse::<usize>(chap)).transpose().map_err(|_| EncodingError::InvalidStartChapter)?,

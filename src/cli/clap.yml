@@ -43,24 +43,23 @@ subcommands:
             long: single
             help: Compile all chapters in a single volume
 
-        - output:
-            long: output
-            short: o
-            takes_value: true
-            required: true
-            help: Path to the directory where the volumes should be put or to the single volume
-
         - chapters-dir:
             long: chapters-dir
-            short: i
+            index: 1
             takes_value: true
             required: true
             help: Path to the directory containing the chapters
 
+        - output:
+            long: output
+            short: o
+            takes_value: true
+            help: Path to the directory where the volumes should be put or to the single volume
+
         - create-output-dir:
             long: create-output-dir
             help: Creates output directory if it does not exist yet
-
+        
         - dirs-prefix:
             long: dirs-prefix
             short: d
@@ -108,7 +107,7 @@ subcommands:
               - individual
               - single
 
-    decode:
+  - decode:
       about: Extract images from an existing comic book
       args:
         - input:

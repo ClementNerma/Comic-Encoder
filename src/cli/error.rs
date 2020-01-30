@@ -36,6 +36,7 @@ pub enum EncodingError {
     FailedToReadChaptersDirectory(IOError),
     ItemHasInvalidUTF8Name(OsString),
     FailedToCreateVolumeFile(usize, IOError),
+    OutputFileAlreadyExists(usize, PathBuf),
     FailedToListChapterDirectoryFiles { volume: usize, chapter: usize, chapter_path: PathBuf, err: IOError },
     FailedToOpenImage { volume: usize, chapter: usize, chapter_path: PathBuf, image_path: PathBuf, err: IOError },
     FailedToCreateChapterDirectoryInZip { volume: usize, chapter: usize, dir_name: String, err: ZipError },
@@ -90,6 +91,9 @@ impl fmt::Display for EncodingError {
             Self::FailedToCreateVolumeFile(volume, err) =>
                 format!("Failed to create the file of volume {}: {}", volume, err),
             
+            Self::OutputFileAlreadyExists(volume, path) =>
+                format!("Failed to create the file of volume {} because path '{}' already exists (use '--overwrite' to force writing)", volume, path.to_string_lossy()),
+                
             Self::FailedToListChapterDirectoryFiles { volume, chapter, chapter_path, err } =>
                 format!(
                     "Failed to list files for chapter {} in volume {} at '{}': {}",
