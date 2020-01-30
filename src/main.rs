@@ -27,6 +27,7 @@ fn main() {
 
     let result = match matches.subcommand() {
         ("encode", Some(args)) => wrap!(cli::encode::from_args(args)),
+        ("decode", Some(args)) => wrap!(cli::decode::from_args(args)),
         ("", _) => wrap!(Err(GlobalError::ActionNameIsMissing)),
         (cmd, _) => wrap!(Err(GlobalError::UnknownAction(cmd.to_owned())))
     };

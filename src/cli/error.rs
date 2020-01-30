@@ -3,6 +3,7 @@ use std::io::Error as IOError;
 use std::path::PathBuf;
 use std::fmt;
 use zip::result::ZipError;
+use pdf::error::PdfError;
 
 /// Global CLI error
 pub enum GlobalError {
@@ -133,6 +134,88 @@ impl fmt::Display for EncodingError {
 
             Self::FailedToCloseZipArchive(volume, err) =>
                 format!("Failed to close archive for volume {}: {}", volume, err)
+        })
+    }
+}
+
+/// Error during in the "decode" action
+pub enum DecodingError {
+    InputFileNotFound,
+    InputFileIsADirectory,
+    OutputDirectoryNotFound,
+    FailedToCreateOutputDirectory(IOError),
+    OutputDirectoryIsAFile,
+    InputFileHasInvalidUTF8FileExtension(OsString),
+    UnsupportedFormat(String),
+    FailedToOpenZipFile(IOError),
+    InvalidZipArchive(ZipError),
+    ZipError(ZipError),
+    ZipFileHasInvalidUTF8FileExtension(PathBuf),
+    FailedToCreateOutputFile(IOError, PathBuf),
+    FailedToExtractZipFile { path_in_zip: PathBuf, extract_to: PathBuf, err: IOError },
+    FailedToRenameTemporaryFile { from: PathBuf, to: PathBuf, err: IOError },
+    FailedToOpenPdfFile(PdfError),
+    FailedToGetPdfPage(usize, PdfError),
+    FailedToGetPdfPageResources(usize, PdfError),
+    FailedToExtractPdfImage(usize, PathBuf, IOError)
+}
+
+impl fmt::Display for DecodingError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", match self {
+            Self::InputFileNotFound =>
+                "Input file was not found".to_owned(),
+
+            Self::InputFileIsADirectory =>
+                "Input file is a directory".to_owned(),
+
+            Self::OutputDirectoryNotFound =>
+                "Output directory was not found".to_owned(),
+
+            Self::FailedToCreateOutputDirectory(err) =>
+                format!("Failed to create output directory: {}", err),
+
+            Self::OutputDirectoryIsAFile =>
+                "Output directory is a file".to_owned(),
+
+            Self::InputFileHasInvalidUTF8FileExtension(path) =>
+                format!("Input file has invalid UTF-8 file extension ('{}')", path.to_string_lossy()),
+
+            Self::UnsupportedFormat(ext) =>
+                format!("Unsupported image format (based on file extension) '{}'", ext),
+
+            Self::FailedToOpenZipFile(err) =>
+                format!("Failed to open input ZIP file: {}", err),
+
+            Self::InvalidZipArchive(err) =>
+                format!("Invalid ZIP archive: {}", err),
+
+            Self::ZipError(err) =>
+                format!("Error while reading ZIP archive: {}", err),
+
+            Self::ZipFileHasInvalidUTF8FileExtension(path) =>
+                format!("A ZIP file has an invalid UTF-8 file extension ('{}')", path.to_string_lossy()),
+
+            Self::FailedToCreateOutputFile(err, path) =>
+                format!("Failed to create output file '{}': {}", path.to_string_lossy(), err),
+
+            Self::FailedToExtractZipFile { path_in_zip, extract_to, err } =>
+                format!("Failed to extract ZIP file '{}' to '{}': {}", path_in_zip.to_string_lossy(), extract_to.to_string_lossy(), err),
+
+            Self::FailedToRenameTemporaryFile { from, to, err } =>
+                format!("Failed to rename temporary file '{}' to '{}': {}", from.to_string_lossy(), to.to_string_lossy(), err),
+
+            Self::FailedToOpenPdfFile(err) =>
+                format!("Failed to open PDF file: {}", err),
+
+            Self::FailedToGetPdfPage(page, err) =>
+                format!("Failed to get PDF page n°{}: {}", page, err),
+            
+            Self::FailedToGetPdfPageResources(page, err) =>
+                format!("Failed to get resources from PDF page n°{}: {}", page, err),
+
+            Self::FailedToExtractPdfImage(page, path, err) =>
+                format!("Failed extract PDF image from page n°{} to path '{}': {}", page, path.to_string_lossy(), err)
         })
     }
 }

@@ -69,7 +69,7 @@ subcommands:
 
         - extended-image-formats:
             long: extended-image-formats
-            short: extimg
+            short: e
             help: Allow additional image formats that may not be supported by all readers (e.g. TIF / RAW / CR2 / ... files)
 
         - start-chapter:
@@ -85,7 +85,7 @@ subcommands:
         - disable-natural-sorting:
             long: disable-natural-sorting
             short: n
-            help: Disable natural sorting (sorts using ASCII letters, a bit faster but unintuitive)
+            help: Disable natural sorting (use default UTF-8 sorting, a bit faster but unintuitive)
 
         - show-chapters-path:
             long: show-chapters-path
@@ -107,3 +107,41 @@ subcommands:
               - compile
               - individual
               - single
+
+    decode:
+      about: Extract images from an existing comic book
+      args:
+        - input:
+            long: input
+            short: i
+            takes_value: true
+            required: true
+            help: The comic book to decode
+
+        - output:
+            long: output
+            short: o
+            takes_value: true
+            required: true
+            help: Directory where images will be written
+
+        - create-output-dir:
+            long: create-output-dir
+            help: Creates output directory if it does not exist yet
+
+        - only-extract-images:
+            long: only-extract-images
+            short: e
+            help: Only extract supported image formats
+
+        - extended-image-formats:
+            long: extended-image-formats
+            short: f
+            help: When using '--only-extract-images', extract additional image formats that may not be supported by all readers (e.g. TIF / RAW / CR2 / ... files)
+            requires:
+                - only-extract-images
+
+        - disable-natural-sorting:
+            long: disable-natural-sorting
+            short: n
+            help: Disable natural sorting (use default UTF-8 sorting, a bit faster but unintuitive)
