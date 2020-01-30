@@ -30,6 +30,8 @@ pub struct Config<'a> {
     output: Option<&'a Path>,
     /// Create the output directory if it does not exist (or the output file's parent directory)
     create_output_dir: bool,
+    /// Overwrite existing files instead of failing
+    overwrite: bool,
     /// If provided, ignore every chapter directory that does not start by the provided prefix
     dirs_prefix: Option<&'a str>,
     /// Start at a specific chapter number (chap. numbers start at 1)
@@ -75,6 +77,11 @@ fn build(c: &Config<'_>, output: &'_ Path, volume: usize, vol_num_len: usize, ch
         Method::Compile(_) | Method::Individual => output.join(Path::new(&file_name)),
         Method::Single => output.to_path_buf()
     };
+
+    // Fail if the target file already exists and '--overwrite' has not been specified
+    if c.overwrite && zip_path.exists() {
+        Err(EncodingError::OutputFileAlreadyExists(volume, zip_path.clone()))?
+    }
 
     // Create a ZIP file to this path
     let zip_file = File::create(zip_path.clone()).map_err(|err| EncodingError::FailedToCreateVolumeFile(volume, err))?;
@@ -449,6 +456,7 @@ pub fn from_args(args: &ArgMatches) -> Result<Vec<PathBuf>, EncodingError> {
         chapters_dir: Path::new(args.value_of("chapters-dir").unwrap()),
         output: args.value_of("output").map(|out| Path::new(out)),
         create_output_dir: args.is_present("create-output-dir"),
+        overwrite: args.is_present("overwrite"),
         dirs_prefix: args.value_of("dirs-prefix"),
         start_chapter: args.value_of("start-chapter").map(|chap| str::parse::<usize>(chap)).transpose().map_err(|_| EncodingError::InvalidStartChapter)?,
         end_chapter: args.value_of("end-chapter").map(|chap| str::parse::<usize>(chap)).transpose().map_err(|_| EncodingError::InvalidEndChapter)?,

@@ -60,6 +60,10 @@ subcommands:
             long: create-output-dir
             help: Creates output directory if it does not exist yet
         
+        - overwrite:
+            long: overwrite
+            help: Overwrite existing files instead of failing
+
         - dirs-prefix:
             long: dirs-prefix
             short: d
