@@ -76,7 +76,6 @@ pub fn decode(c: &Config, is_rebuilding: bool) -> Result<Vec<PathBuf>, DecodingE
     let result = match ext {
         "zip" | "cbz" => {
             debug!("Matched input format: ZIP / CBZ");
-
             trace!("Opening input file...");
 
             let file = File::open(input).map_err(DecodingError::FailedToOpenZipFile)?;
@@ -214,7 +213,13 @@ pub fn decode(c: &Config, is_rebuilding: bool) -> Result<Vec<PathBuf>, DecodingE
             Ok(extracted)
         },
 
-        _ => Err(DecodingError::UnsupportedFormat(ext.to_owned()))
+        _ => {
+            if lib::is_supported_for_decoding(ext) {
+                warn!("Internal error: format '{}' cannot be handled but is marked as supported nonetheless", ext);
+            }
+
+            Err(DecodingError::UnsupportedFormat(ext.to_owned()))
+        }
     };
 
     if let Ok(pages) = &result {

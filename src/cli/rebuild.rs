@@ -152,9 +152,7 @@ fn rebuild_dir(c: &Config, input: &Path) -> Result<Vec<PathBuf>, RebuildingError
             if let Some(ext) = item.extension() {
                 match ext.to_str() {
                     None => Err(RebuildingError::InputItemHasInvalidUTF8Extension(item))?,
-                    Some(ext) => if ext == "zip" || ext == "cbz" || ext == "pdf" {
-                        files.push(item)
-                    }
+                    Some(ext) => if lib::is_supported_for_decoding(ext) { files.push(item) }
                 }
             }
         }

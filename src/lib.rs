@@ -48,6 +48,31 @@ pub fn has_image_ext(path: impl AsRef<Path>, extended: bool) -> bool {
     }
 }
 
+/// Check if a comic format is supported for decoding
+/// 
+/// # Examples
+/// 
+/// ```
+/// assert_eq!(is_supported_for_decoding("zip"), true);
+/// assert_eq!(is_supported_for_decoding("pdf"), true);
+/// assert_eq!(is_supported_for_decoding("mp3"), false);
+/// ```
+pub fn is_supported_for_decoding(ext: &str) -> bool {
+    match ext {
+        // Common archive formats
+        "zip" => true,
+
+        // Common archive formats with comic-related extension
+        "cbz" => true,
+
+        // Non-archive formats
+        "pdf" => true,
+
+        // Every other format is not supported
+        _ => false
+    }
+}
+
 /// Get the largest possible number from the first characters of the provided characters iterator
 /// The iterator *will* advance up to the first non-digit character
 /// Only integers are supported, but there is no size limit
