@@ -96,6 +96,21 @@ comicenc rebuild my-book.pdf
 
 This will create a `my-book.cbz` file, a format which is more widely supported by comic readers.
 
+**Tip:** To accelerate the operation, you can specify the temporary directory used to rebuild the comic as a directory on another drive with `--temporary-dir`, which avoids keeping the source drive occuppied. Huge performance improvements can be seen when the temporary directory in on a SSD. The temporary directory is removed when the operation is complete.
+
+```shell
+comicenc rebuild /mnt/external_hard_drive/my-book.pdf --temporary-dir /mnt/super_fast_ssd/comicenc_tmp_dir
+```
+
+### Rebuild multiple comics at once
+
+```shell
+comicenc rebuild ./books-dir/
+```
+
+This is equivalent to calling the `rebuild` action on each comic in the directory.
+The performance tip about the temporary directory applies here too.
+
 ### Options
 
 * `--start-chapter <num>`: ignore every chapter before the provided one during encoding (numbers start at 1)
