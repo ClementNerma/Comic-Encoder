@@ -237,6 +237,7 @@ pub enum RebuildingError {
     DecodingError(DecodingError),
     EncodingError(EncodingError),
     FailedToGetCWD(IOError),
+    InputFileIsADirectory,
     InputFileIsRootDirectory,
     FailedToRemoveExistingTemporaryDirectory(IOError),
     InputDirectoryNotFound,
@@ -258,6 +259,9 @@ impl fmt::Display for RebuildingError {
 
             Self::FailedToGetCWD(err) =>
                 format!("Failed to get current working directory: {}", err),
+
+            Self::InputFileIsADirectory =>
+                "Input file is a directory ; if you want to rebuild all comics in it, use the '--dir' flag".to_owned(),
 
             Self::InputFileIsRootDirectory =>
                 "Input file is root directory".to_owned(),

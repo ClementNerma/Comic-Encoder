@@ -38,8 +38,14 @@ pub fn rebuild(c: &Config) -> Result<Vec<PathBuf>, RebuildingError> {
     // Get absolute path to the input for path manipulation
     let input = env::current_dir().map_err(RebuildingError::FailedToGetCWD)?.join(c.input);
 
+    // Handle rebuilding of the whole directory if asked to
     if c.dir {
         return rebuild_dir(c, &input);
+    }
+
+    // Ensure input is not a directory
+    if input.is_dir() {
+        Err(RebuildingError::InputFileIsADirectory)?;
     }
 
     // Get the temporary directory's wrapper (the one with the ugly name)
