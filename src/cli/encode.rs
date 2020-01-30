@@ -53,6 +53,7 @@ pub struct Config<'a> {
 }
 
 /// Build a volume
+/// `is_rebuilding` is used to indicate encoding is performed as part of the 'rebuild' method
 /// `output` is the actuel output path
 /// `volume` is the current volume number, starting at 1
 /// `vol_num_len` is the maximum string length of the volume number (e.g. 1520 volumes => `vol_num_len == 4`)
@@ -60,7 +61,7 @@ pub struct Config<'a> {
 /// `start_chapter` is the number of the first chapter in this volume
 /// `chapters` is a list of the chapters this volume contains. It's a vector of tuples containing: (chapter number, path to the chapter's directory, chapter's directory's file name)
 /// `config` is the configuration to use
-fn build(c: &Config<'_>, output: &'_ Path, volume: usize, vol_num_len: usize, chapter_num_len: usize, start_chapter: usize, chapters: &Vec<(usize, PathBuf, String)>) -> Result<PathBuf, EncodingError> {
+fn build(c: &Config<'_>, is_rebuilding: bool, output: &'_ Path, volume: usize, vol_num_len: usize, chapter_num_len: usize, start_chapter: usize, chapters: &Vec<(usize, PathBuf, String)>) -> Result<PathBuf, EncodingError> {
     // Get timestamp to measure performance
     let build_started = Instant::now();
 
@@ -258,8 +259,14 @@ fn build(c: &Config<'_>, output: &'_ Path, volume: usize, vol_num_len: usize, ch
     // Format elapsed time
     let elapsed = format!("{}.{:03} s", elapsed.as_secs(), elapsed.subsec_millis());
 
-    if c.method == Method::Individual {
-        info!("Successfully created volume file '{}', containing {} pages in {}.", success_display_file_name, pics_counter, elapsed);
+    if c.method == Method::Individual || is_rebuilding {
+        info!(
+            "{}Successfully created volume file '{}', containing {} pages in {}.",
+            if is_rebuilding { "===> " } else { "" },
+            success_display_file_name,
+            pics_counter,
+            elapsed
+        );
     } else {
         info!(
             "Successfully created volume {} (chapters {:0chapter_num_len$} to {:0chapter_num_len$}) in '{}', containing {} pages in {}.",
@@ -277,7 +284,8 @@ fn build(c: &Config<'_>, output: &'_ Path, volume: usize, vol_num_len: usize, ch
 }
 
 /// Perform an encoding using the provided configuration object
-pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
+/// `is_rebuilding` is used to indicate encoding is performed as part of the 'rebuild' method
+pub fn encode(c: &Config, is_rebuilding: bool) -> Result<Vec<PathBuf>, EncodingError> {
     // Get the number of chapters to put in each volume
     let chap_per_vol = match c.method {
         Method::Compile(chap_per_vol) => chap_per_vol,
@@ -434,17 +442,19 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
     // Determine the real number of volumes to create
     let volumes = lib::ceil_div(chapter_len, chap_per_vol.into());
 
-    info!(
-        "Going to compile chapter{} {} to {} ({} out of {}, {} were ignored) into {} volume{}.",
-        if chapter_len > 0 { "s" } else { "" },
-        start_chapter + 1,
-        end_chapter,
-        chapter_len,
-        chapter_dirs.len(),
-        chapter_dirs.len() - chapter_len,
-        volumes,
-        if volumes > 1 { "s" } else { "" }
-    );
+    if !is_rebuilding {
+        info!(
+            "Going to treat chapter{} {} to {} ({} out of {}, {} were ignored) into {} volume{}.",
+            if chapter_len > 0 { "s" } else { "" },
+            start_chapter + 1,
+            end_chapter,
+            chapter_len,
+            chapter_dirs.len(),
+            chapter_dirs.len() - chapter_len,
+            volumes,
+            if volumes > 1 { "s" } else { "" }
+        );
+    }
 
     trace!("Building chapters list for all volumes...");
 
@@ -458,7 +468,7 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
 
         // If this volume contains enough chapters, build it
         if volume_chapters.len() == chap_per_vol.into() {
-            output_files.push(build(c, &output, volume, vol_num_len, chapter_num_len, volume_start_chapter, &volume_chapters)?);
+            output_files.push(build(c, is_rebuilding, &output,  volume, vol_num_len, chapter_num_len, volume_start_chapter, &volume_chapters)?);
             volume_start_chapter += volume_chapters.len();
             volume_chapters = vec![];
             volume += 1;
@@ -467,7 +477,7 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
 
     // If there are remaining chapters, build a last volume with them
     if volume_chapters.len() != 0 {
-        output_files.push(build(c, &output, volume, vol_num_len, chapter_num_len, volume_start_chapter, &volume_chapters)?);
+        output_files.push(build(c, is_rebuilding, &output, volume, vol_num_len, chapter_num_len, volume_start_chapter, &volume_chapters)?);
     }
 
     // Only 1 volume should be created when building single volume
@@ -475,7 +485,9 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
         assert!(output_files.len() <= 1, "Internal error: more than 1 volume was produced for a single output file.");
     }
 
-    info!("Successfully built {} volume{}.", output_files.len(), if output_files.len() > 1 { "s" } else { "" });
+    if !is_rebuilding {
+        info!("Successfully built {} volume{}.", output_files.len(), if output_files.len() > 1 { "s" } else { "" });
+    }
 
     Ok(output_files)
 }
@@ -508,5 +520,5 @@ pub fn from_args(args: &ArgMatches) -> Result<Vec<PathBuf>, EncodingError> {
         show_chapters_path: args.is_present("show-chapters-path"),
         display_full_names: args.is_present("display-full-names"),
         compress_losslessly: args.is_present("compress-losslessly")
-    })
+    }, false)
 }

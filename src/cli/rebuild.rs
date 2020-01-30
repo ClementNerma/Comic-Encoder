@@ -67,7 +67,7 @@ pub fn rebuild(c: &Config) -> Result<Vec<PathBuf>, RebuildingError> {
         only_extract_images: c.only_extract_images,
         extended_image_formats: c.extended_image_formats,
         disable_nat_sort: c.disable_nat_sort
-    }).map_err(RebuildingError::DecodingError)?;
+    }, true).map_err(RebuildingError::DecodingError)?;
 
     info!("==> Encoding images in a book...");
 
@@ -86,7 +86,7 @@ pub fn rebuild(c: &Config) -> Result<Vec<PathBuf>, RebuildingError> {
         show_chapters_path: false,
         display_full_names: false,
         compress_losslessly: c.compress_losslessly
-    }).map_err(RebuildingError::EncodingError)?;
+    }, true).map_err(RebuildingError::EncodingError)?;
 
     assert_eq!(path.len(), 1, "Internal error: encoding during rebuild did not create exactly 1 file");
 

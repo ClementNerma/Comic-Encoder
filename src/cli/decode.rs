@@ -27,7 +27,8 @@ pub struct Config<'a> {
 }
 
 /// Perform a decoding using the provided configuration object
-pub fn decode(c: &Config) -> Result<Vec<PathBuf>, DecodingError> {
+/// `is_rebuilding` is used to indicate encoding is performed as part of the 'rebuild' method
+pub fn decode(c: &Config, is_rebuilding: bool) -> Result<Vec<PathBuf>, DecodingError> {
     // Get absolute path to the input for path manipulation
     let input = env::current_dir().map_err(DecodingError::FailedToGetCWD)?.join(c.input);
 
@@ -37,6 +38,9 @@ pub fn decode(c: &Config) -> Result<Vec<PathBuf>, DecodingError> {
     } else if !input.is_file() {
         Err(DecodingError::InputFileIsADirectory)?
     }
+
+    // Determine a prefix to show when rebuilding
+    let rebuild_prefix = if is_rebuilding { "===> " } else { "" };
 
     // Create the output directory if needed, and get the output path
     let output = match c.output {
@@ -191,7 +195,7 @@ pub fn decode(c: &Config) -> Result<Vec<PathBuf>, DecodingError> {
                 }));
             }
 
-            info!("Extracting {} images from PDF...", images.len());
+            info!("{}Extracting {} images from PDF...", rebuild_prefix, images.len());
 
             let mut extracted = vec![];
             let page_num_len = images.len().to_string().len();
@@ -215,7 +219,7 @@ pub fn decode(c: &Config) -> Result<Vec<PathBuf>, DecodingError> {
 
     if let Ok(pages) = &result {
         let elapsed = extraction_started.elapsed();
-        info!("Successfully extracted {} pages in {}.{:03} s!", pages.len(), elapsed.as_secs(), elapsed.subsec_millis());
+        info!("{}Successfully extracted {} pages in {}.{:03} s!", rebuild_prefix, pages.len(), elapsed.as_secs(), elapsed.subsec_millis());
     }
 
     result
@@ -230,5 +234,5 @@ pub fn from_args(args: &ArgMatches) -> Result<Vec<PathBuf>, DecodingError> {
         only_extract_images: args.is_present("only-extract-images"),
         extended_image_formats: args.is_present("extended-image-formats"),
         disable_nat_sort: args.is_present("disable-natural-sorting")
-    })
+    }, false)
 }
