@@ -335,7 +335,7 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
                         Err(EncodingError::OutputFileHasInvalidUTF8Name(file_name.to_os_string()))?
                     }
 
-                    let parent = output.parent().ok_or(EncodingError::OutputDirectoryNotFound)?;
+                    let parent = output.parent().expect("Internal error: failed to get parent directory from output file");
 
                     if !parent.is_dir() {
                         if c.create_output_dir {
