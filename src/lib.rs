@@ -184,7 +184,7 @@ pub fn readdir_files_recursive<F: Fn(&PathBuf) -> bool>(dir: impl AsRef<Path>, f
 }
 
 /// Compare two paths using natural order
-/// See the "natsort::natural_cmp()" function for more informations
+/// See the "natural_cmp" function for more informations
 pub fn natural_paths_cmp(a: &PathBuf, b: &PathBuf) -> Ordering {
     let mut a = a.components();
     let mut b = b.components();
