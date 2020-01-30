@@ -34,10 +34,12 @@ Considering the following directory at `/home/me/book`:
 └── ZChapter_12
 ```
 
+With `comicenc` being an alias for `cargo run --release --`.
+
 ### Compile multiple chapters into volumes of 5 chapters each
 
 ```
-> cargo run --release -- volumify --compile 5 -i /home/me/book -o ./build/
+> comicenc volumify --compile 5 -i /home/me/book -o ./build/
 ```
 
 ```
@@ -50,7 +52,7 @@ build
 ### Compile chapters into individual volumes
 
 ```shell
-> cargo run --release -- volumify --individual -i /home/me/book -o ./build/
+> comicenc volumify --individual -i /home/me/book -o ./build/
 ```
 
 ```
@@ -72,13 +74,13 @@ build
 ### Compile multiple chapters into a single volume
 
 ```shell
-cargo run --release -- volumify --single -i /home/me/book -o Book.cbz
+comicenc volumify --single -i /home/me/book -o Book.cbz
 ```
 
 ### Rebuild an existing comic
 
 ```shell
-cargo run --release -- rebuild my-book.pdf
+comicenc rebuild my-book.pdf
 ```
 
 This will create a `my-book.cbz` file, a format which is more widely supported by comic readers.
@@ -93,7 +95,7 @@ This will create a `my-book.cbz` file, a format which is more widely supported b
 * `--compress-losslessly`: compress all pictures losslessy - takes quite a bit of time, mostly useless on JPEG/PNG, but useful on BMP images
 * `--silent`: do not display anything, except error messages
 
-You can see additional parameters by calling `cargo run --release -- volumify --help`.
+You can see additional parameters by calling `comicenc volumify --help`.
 
 ## Installation
 
