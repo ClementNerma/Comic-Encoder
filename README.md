@@ -10,6 +10,9 @@ Main features are:
 * Compiling chapters into individual volumes (e.g. you want one volume per chapter, or you simply want to compile multiple comics at once)
 * Compiling groups of chapters into a single volume (e.g. you have all chapters of a book and want to get a single archive out of it)
 
+Supported formats are `.zip` / `.cbz` and `.pdf` files.
+Support is planned for `.rar` / `.cbr` and `.7z` / `.cb7` files.
+
 ## Usage
 
 Considering the following directory at `/home/me/book`:
@@ -34,13 +37,9 @@ Considering the following directory at `/home/me/book`:
 
 ```
 > cargo run --release -- volumify --compile 5 -i /home/me/book -o ./build/
+```
 
-[ 0m  0.000s] INFO: Going to compile chapters 1 to 12 (12 out of 12, 0 were ignored) into 3 volumes.
-[ 0m  0.004s] INFO: Successfully created volume 1 (chapters 01 to 05) in 'Volume-1.cbz', containing 0 pages.
-[ 0m  0.008s] INFO: Successfully created volume 2 (chapters 06 to 10) in 'Volume-2.cbz', containing 0 pages.
-[ 0m  0.010s] INFO: Successfully created volume 3 (chapters 11 to 12) in 'Volume-3.cbz', containing 0 pages.
-[ 0m  0.011s] INFO: Done in 0m 0.011s.
-
+```
 build
 ├── Volume-1.cbz
 ├── Volume-2.cbz
@@ -51,22 +50,9 @@ build
 
 ```shell
 > cargo run --release -- volumify --individual -i /home/me/book -o ./build/
+```
 
-[ 0m  0.000s] INFO: Going to compile chapters 1 to 12 (12 out of 12, 0 were ignored) into 12 volumes.
-[ 0m  0.002s] INFO: Successfully created volume file 'FirstChapter_1.cbz', containing 0 pages.
-[ 0m  0.004s] INFO: Successfully created volume file 'MyChapter_2.cbz', containing 0 pages.
-[ 0m  0.006s] INFO: Successfully created volume file 'MyChapter_3.cbz', containing 0 pages.
-[ 0m  0.008s] INFO: Successfully created volume file 'MyChapter_4.cbz', containing 0 pages.
-[ 0m  0.011s] INFO: Successfully created volume file 'MyChapter_5.cbz', containing 0 pages.
-[ 0m  0.013s] INFO: Successfully created volume file 'MyChapter_6.cbz', containing 0 pages.
-[ 0m  0.015s] INFO: Successfully created volume file 'MyChapter_7.cbz', containing 0 pages.
-[ 0m  0.017s] INFO: Successfully created volume file 'MyChapter_8.cbz', containing 0 pages.
-[ 0m  0.018s] INFO: Successfully created volume file 'MyChapter_9.cbz', containing 0 pages.
-[ 0m  0.020s] INFO: Successfully created volume file 'MyChapter_10.cbz', containing 0 pages.
-[ 0m  0.022s] INFO: Successfully created volume file 'MyChapter_11.cbz', containing 0 pages.
-[ 0m  0.024s] INFO: Successfully created volume file 'ZChapter_12.cbz', containing 0 pages.
-[ 0m  0.024s] INFO: Done in 0m 0.025s.
-
+```
 build
 ├── FirstChapter_1.cbz
 ├── MyChapter_10.cbz
@@ -86,11 +72,15 @@ build
 
 ```shell
 cargo run --release -- volumify --single -i /home/me/book -o Book.cbz
-
-[ 0m  0.000s] INFO: Going to compile chapters 1 to 12 (12 out of 12, 0 were ignored) into 1 volume.
-[ 0m  0.004s] INFO: Successfully created volume 'Book.cbz' (chapters 01 to 12) in 'Book.cbz', containing 0 pages.
-[ 0m  0.005s] INFO: Done in 0m 0.005s.
 ```
+
+### Rebuild an existing comic
+
+```shell
+cargo run --release -- rebuild my-book.pdf
+```
+
+This will create a `my-book.cbz` file, a format which is more widely supported by comic readers.
 
 ### Options
 
