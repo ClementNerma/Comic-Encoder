@@ -117,6 +117,7 @@ subcommands:
         - input:
             index: 1
             takes_value: true
+            required: true
             help: The comic book to decode
 
         - output:
