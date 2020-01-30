@@ -40,7 +40,7 @@ With `comicenc` being an alias for `cargo run --release --`.
 ### Compile multiple chapters into volumes of 5 chapters each
 
 ```
-> comicenc encode --compile 5 -i /home/me/book -o ./build/
+> comicenc encode /home/me/book --compile 5 -o ./build/
 ```
 
 ```
@@ -53,7 +53,7 @@ build
 ### Compile chapters into individual volumes
 
 ```shell
-> comicenc encode --individual -i /home/me/book -o ./build/
+> comicenc encode /home/me/book --individual -o ./build/
 ```
 
 ```
@@ -75,8 +75,18 @@ build
 ### Compile multiple chapters into a single volume
 
 ```shell
-comicenc encode --single -i /home/me/book -o Book.cbz
+comicenc encode /home/me/book --single
 ```
+
+This will create a file named `book.cbz` containing all chapters.
+
+### Extract an existing comic
+
+```shell
+comicenc decode ./build/FirstChapter_1.cbz
+```
+
+This will create a directory named `FirstChapter_1` containing the volume's images.
 
 ### Rebuild an existing comic
 
@@ -88,8 +98,8 @@ This will create a `my-book.cbz` file, a format which is more widely supported b
 
 ### Options
 
-* `--start-chapter <num>`: ignore every chapter before the provided one (numbers start at 1)
-* `--end-chapter <num>`: ignore every chapter after the provided one (numbers start at 1)
+* `--start-chapter <num>`: ignore every chapter before the provided one during encoding (numbers start at 1)
+* `--end-chapter <num>`: ignore every chapter after the provided one during encoding (numbers start at 1)
 * `--dirs-prefix <prefix>`: only consider chapter directories that start by the provided prefix
 * `--create-output-dir`: create the output directory if it does not exist yet
 * `--extended-images-formats`: allow images with exotic formats, that may not be suppored by the vast majority of comics readers
