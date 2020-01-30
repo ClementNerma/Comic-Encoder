@@ -154,13 +154,23 @@ subcommands:
             index: 1
             takes_value: true
             required: true
-            help: The comic to rebuild
+            help: The comic to rebuild, or a directory of comics with '--dir'
         
         - output:
             long: output
             short: o
             takes_value: true
             help: Output path for the rebuilt comic
+        
+        - dir:
+            long: dir
+            help: Build all comics in the input directory
+
+        - create-output-dir:
+            long: create-output-dir
+            help: Create output directory if it does not exist yet when using '--dir'
+            requires:
+                - dir
 
         - overwrite:
             long: overwrite

@@ -237,16 +237,47 @@ pub enum RebuildingError {
     DecodingError(DecodingError),
     EncodingError(EncodingError),
     FailedToGetCWD(IOError),
-    InputFileIsRootDirectory
+    InputFileIsRootDirectory,
+    InputDirectoryNotFound,
+    FailedToCreateOutputDirectory(IOError),
+    OutputDirectoryNotFound,
+    OutputDirectoryIsAFile,
+    FailedToReadInputDirectory(IOError),
+    InputItemHasInvalidUTF8Extension(PathBuf)
 }
 
 impl fmt::Display for RebuildingError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", match self {
-            Self::DecodingError(err) => err.to_string(),
-            Self::EncodingError(err) => err.to_string(),
-            Self::FailedToGetCWD(err) => format!("Failed to get current working directory: {}", err),
-            Self::InputFileIsRootDirectory => "Input file is root directory".to_owned()
+            Self::DecodingError(err) =>
+                err.to_string(),
+
+            Self::EncodingError(err) =>
+                err.to_string(),
+
+            Self::FailedToGetCWD(err) =>
+                format!("Failed to get current working directory: {}", err),
+
+            Self::InputFileIsRootDirectory =>
+                "Input file is root directory".to_owned(),
+            
+            Self::InputDirectoryNotFound =>
+                "Input directory was not found".to_owned(),
+
+            Self::FailedToCreateOutputDirectory(err) =>
+                format!("Failed to create output directory: {}", err),
+
+            Self::OutputDirectoryIsAFile =>
+                "Output directory is a file".to_owned(),
+
+            Self::FailedToReadInputDirectory(err) =>
+                format!("Failed to read input directory: {}", err),
+
+            Self::InputItemHasInvalidUTF8Extension(path) =>
+                format!("An item in the input directory has an invalid UTF-8 extension ('{}')", path.to_string_lossy()),
+
+            Self::OutputDirectoryNotFound =>
+                "Output directory was not found".to_owned()
         })
     }
 }
