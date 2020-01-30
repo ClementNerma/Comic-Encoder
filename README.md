@@ -9,6 +9,7 @@ Main features are:
 * Compiling groups of chapters into several volumes (e.g. you have dozens of chapters and want to make volumes of 10 chapters)
 * Compiling chapters into individual volumes (e.g. you want one volume per chapter, or you simply want to compile multiple comics at once)
 * Compiling groups of chapters into a single volume (e.g. you have all chapters of a book and want to get a single archive out of it)
+* Rebuild comics (e.g. convert a PDF comic to a CBZ one, to use a more widely supported format)
 
 Supported formats are `.zip` / `.cbz` and `.pdf` files.
 Support is planned for `.rar` / `.cbr` and `.7z` / `.cb7` files.
