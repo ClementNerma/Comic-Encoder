@@ -45,7 +45,7 @@ pub fn rebuild(c: &Config) -> Result<Vec<PathBuf>, RebuildingError> {
 
     // Ensure input is not a directory
     if input.is_dir() {
-        Err(RebuildingError::InputFileIsADirectory)?;
+        Err(RebuildingError::InputFileIsADirectory)?
     }
 
     // Get the temporary directory's wrapper (the one with the ugly name)
@@ -121,7 +121,7 @@ fn rebuild_dir(c: &Config, input: &Path) -> Result<Vec<PathBuf>, RebuildingError
     trace!("Task: rebuild all files from input directory");
 
     if !input.exists() {
-        Err(RebuildingError::InputDirectoryNotFound)?;
+        Err(RebuildingError::InputDirectoryNotFound)?
     }
 
     let output = c.output.unwrap_or(&input);
@@ -133,10 +133,10 @@ fn rebuild_dir(c: &Config, input: &Path) -> Result<Vec<PathBuf>, RebuildingError
 
             fs::create_dir_all(output).map_err(RebuildingError::FailedToCreateOutputDirectory)?;
         } else {
-            Err(RebuildingError::OutputDirectoryNotFound)?;
+            Err(RebuildingError::OutputDirectoryNotFound)?
         }
     } else if output.is_file() {
-        Err(RebuildingError::OutputDirectoryIsAFile)?;
+        Err(RebuildingError::OutputDirectoryIsAFile)?
     }
 
     // The list of files to rebuild

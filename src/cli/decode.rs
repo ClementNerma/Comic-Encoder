@@ -55,11 +55,11 @@ pub fn decode(c: &Config, is_rebuilding: bool) -> Result<Vec<PathBuf>, DecodingE
                 Err(DecodingError::OutputDirectoryIsAFile)?
             }
 
-            output.to_path_buf()
+            output.to_owned()
         },
 
         None => {
-            let path = input.with_extension("").to_path_buf();
+            let path = input.with_extension("").to_owned();
             fs::create_dir_all(&path).map_err(DecodingError::FailedToCreateOutputDirectory)?;
             path
         }
@@ -164,7 +164,7 @@ pub fn decode(c: &Config, is_rebuilding: bool) -> Result<Vec<PathBuf>, DecodingE
                 trace!("Renaming picture {}/{}...", i + 1, total_pages);
 
                 fs::rename(&page.extracted_path, &target).map_err(|err| DecodingError::FailedToRenameTemporaryFile {
-                    from: page.extracted_path, to: target.to_path_buf(), err
+                    from: page.extracted_path, to: target.to_owned(), err
                 })?;
 
                 extracted.push(target);
