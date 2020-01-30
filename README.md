@@ -80,6 +80,14 @@ comicenc encode /home/me/book --single
 
 This will create a file named `book.cbz` containing all chapters.
 
+### Compile a single directory of pictures
+
+```shell
+comicenc encode /home/me/pictures --single --root-chapter
+```
+
+This will create a single file named `pictures.cbz` containing all pictures directly under `/home/me/pictures`.
+
 ### Extract an existing comic
 
 ```shell
