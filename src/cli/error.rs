@@ -28,6 +28,7 @@ pub enum EncodingError {
     InvalidEndChapter,
     AtLeast1ChapterPerVolume,
     StartChapterCannotBeHigherThanEndChapter,
+    RootCannotBeUsedAsSingleChapter,
     FailedToGetCWD(IOError),
     ChaptersDirectoryNotFound,
     OutputDirectoryNotFound,
@@ -67,6 +68,9 @@ impl fmt::Display for EncodingError {
 
             Self::StartChapterCannotBeHigherThanEndChapter =>
                 "Start chapter cannot be higher than the end chapter".to_owned(),
+
+            Self::RootCannotBeUsedAsSingleChapter =>
+                "Root cannot be used as single chapter".to_owned(),
 
             Self::FailedToGetCWD(err) =>
                 format!("Failed to get current working directory: {}", err),

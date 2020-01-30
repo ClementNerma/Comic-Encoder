@@ -88,13 +88,14 @@ pub fn rebuild(c: &Config) -> Result<Vec<PathBuf>, RebuildingError> {
     // Put all images from the input comic in a single comic file
     let path = encode::encode(&encode::Config {
         method: encode::Method::Single,
-        chapters_dir: &tmp_dir_wrapper,
+        chapters_dir: &tmp_dir_pages,
         output: Some(&output),
         create_output_dir: false,
         overwrite: c.overwrite,
         dirs_prefix: None,
         start_chapter: None,
         end_chapter: None,
+        root_chapter: true,
         extended_image_formats: c.extended_image_formats,
         disable_nat_sort: c.disable_nat_sort,
         show_chapters_path: false,

@@ -40,6 +40,8 @@ pub struct Config<'a> {
     pub start_chapter: Option<usize>,
     /// Ends at a specific chapter number (chap. numbers start at 1)
     pub end_chapter: Option<usize>,
+    /// Consider input path as a single chapter directory (don't look at sub-directory chapters)
+    pub root_chapter: bool,
     /// Allows to use extended image formats that may not be supported by comic readers
     pub extended_image_formats: bool,
     /// Disables natural sort and rely on native UTF-8 sort instead, which gives an intuitive order of items (e.g. `folder 10` will be _before_ `folder 2`)
@@ -316,7 +318,8 @@ pub fn encode(c: &Config, is_rebuilding: bool) -> Result<Vec<PathBuf>, EncodingE
     }
 
     // Get absolute path to the chapters dir
-    let chapters_dir = env::current_dir().map_err(EncodingError::FailedToGetCWD)?.join(c.chapters_dir);
+    let chapters_dir = env::current_dir().map_err(EncodingError::FailedToGetCWD)?
+        .join(if c.root_chapter { c.chapters_dir } else { c.chapters_dir.parent().ok_or(EncodingError::RootCannotBeUsedAsSingleChapter)? });
 
     if !chapters_dir.is_dir() {
         Err(EncodingError::ChaptersDirectoryNotFound)?
@@ -371,32 +374,40 @@ pub fn encode(c: &Config, is_rebuilding: bool) -> Result<Vec<PathBuf>, EncodingE
     };
 
     // List of chapter directories
-    let mut chapter_dirs = vec![];
+    let mut chapter_dirs: Vec<(PathBuf, String)> = vec![];
 
-    trace!("Reading chapter directories...");
+    if c.root_chapter {
+        let chap_name = c.chapters_dir.file_name().unwrap();
+        chapter_dirs.push((
+            c.chapters_dir.to_path_buf(),
+            chap_name.to_str().ok_or(EncodingError::ItemHasInvalidUTF8Name(chap_name.to_os_string()))?.to_owned()
+        ))
+    } else {
+        trace!("Reading chapter directories...");
 
-    // Iterate over all items in the input directory
-    for entry in fs::read_dir(chapters_dir).map_err(EncodingError::FailedToReadChaptersDirectory)? {
-        let entry = entry.map_err(EncodingError::FailedToReadChaptersDirectory)?;
-        let path = entry.path();
+        // Iterate over all items in the input directory
+        for entry in fs::read_dir(chapters_dir).map_err(EncodingError::FailedToReadChaptersDirectory)? {
+            let entry = entry.map_err(EncodingError::FailedToReadChaptersDirectory)?;
+            let path = entry.path();
 
-        // Ignore files
-        if path.is_dir() {
-            let entry_name = entry.file_name().into_string().map_err(|_| EncodingError::ItemHasInvalidUTF8Name(entry.file_name()))?;
+            // Ignore files
+            if path.is_dir() {
+                let entry_name = entry.file_name().into_string().map_err(|_| EncodingError::ItemHasInvalidUTF8Name(entry.file_name()))?;
 
-            // Ignore directories not starting by the provided prefix
-            if c.dirs_prefix.map(|prefix| entry_name.starts_with(prefix)).unwrap_or(true) {
-                chapter_dirs.push((path, entry_name));
+                // Ignore directories not starting by the provided prefix
+                if c.dirs_prefix.map(|prefix| entry_name.starts_with(prefix)).unwrap_or(true) {
+                    chapter_dirs.push((path, entry_name));
+                }
             }
         }
-    }
 
-    trace!("Sorting chapter directories by name...");
+        trace!("Sorting chapter directories by name...");
 
-    if c.disable_nat_sort {
-        chapter_dirs.sort_by(|a, b| a.0.cmp(&b.0));
-    } else {
-        chapter_dirs.sort_by(|a, b| lib::natural_paths_cmp(&a.0, &b.0));
+        if c.disable_nat_sort {
+            chapter_dirs.sort_by(|a, b| a.0.cmp(&b.0));
+        } else {
+            chapter_dirs.sort_by(|a, b| lib::natural_paths_cmp(&a.0, &b.0));
+        }
     }
 
     // Disable mutability for this variable
@@ -509,12 +520,13 @@ pub fn from_args(args: &ArgMatches) -> Result<Vec<PathBuf>, EncodingError> {
     encode(&Config {
         method,
         chapters_dir: Path::new(args.value_of("chapters-dir").unwrap()),
-        output: args.value_of("output").map(|out| Path::new(out)),
+        output: args.value_of("output").map(Path::new),
         create_output_dir: args.is_present("create-output-dir"),
         overwrite: args.is_present("overwrite"),
         dirs_prefix: args.value_of("dirs-prefix"),
-        start_chapter: args.value_of("start-chapter").map(|chap| str::parse::<usize>(chap)).transpose().map_err(|_| EncodingError::InvalidStartChapter)?,
-        end_chapter: args.value_of("end-chapter").map(|chap| str::parse::<usize>(chap)).transpose().map_err(|_| EncodingError::InvalidEndChapter)?,
+        start_chapter: args.value_of("start-chapter").map(str::parse::<usize>).transpose().map_err(|_| EncodingError::InvalidStartChapter)?,
+        end_chapter: args.value_of("end-chapter").map(str::parse::<usize>).transpose().map_err(|_| EncodingError::InvalidEndChapter)?,
+        root_chapter: args.is_present("root-chapter"),
         extended_image_formats: args.is_present("extended-image-formats"),
         disable_nat_sort: args.is_present("disable-natural-sorting"),
         show_chapters_path: args.is_present("show-chapters-path"),

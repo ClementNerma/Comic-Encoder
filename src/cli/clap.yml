@@ -85,6 +85,14 @@ subcommands:
             takes_value: true
             help: End at a specific chapter (ignore every chapter after this one)
 
+        - root-chapter:
+            long: root-chapter
+            short: r
+            help: Consider input path as a single chapter directory (don't look at sub-directory chapters)
+            conflicts_with:
+                - start-chapter
+                - end-chapter
+
         - disable-natural-sorting:
             long: disable-natural-sorting
             short: n
