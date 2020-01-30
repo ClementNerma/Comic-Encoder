@@ -211,8 +211,8 @@ fn build(c: &Config<'_>, is_rebuilding: bool, output: &'_ Path, volume: usize, v
             };
 
             trace!(
-                "Adding picture {:0pic_num_len$} from chapter {} to volume {} as '{}/{}'...",
-                page_nb, chapter_display_name, volume_display_name, zip_dir_name, name_in_zip, pic_num_len = pic_num_len
+                "Adding picture {:0pic_num_len$} at '{}' from chapter {} to volume {} as '{}/{}'...",
+                page_nb, file.to_string_lossy(), chapter_display_name, volume_display_name, zip_dir_name, name_in_zip, pic_num_len = pic_num_len
             );
 
             // Determine the path of the file in the ZIP directory
