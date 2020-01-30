@@ -115,17 +115,14 @@ subcommands:
       about: Extract images from an existing comic book
       args:
         - input:
-            long: input
-            short: i
+            index: 1
             takes_value: true
-            required: true
             help: The comic book to decode
 
         - output:
             long: output
             short: o
             takes_value: true
-            required: true
             help: Directory where images will be written
 
         - create-output-dir:

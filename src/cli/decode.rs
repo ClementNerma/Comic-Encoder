@@ -11,7 +11,7 @@ use super::error::DecodingError;
 
 pub struct Config<'a> {
     input: &'a Path,
-    output: &'a Path,
+    output: Option<&'a Path>,
     create_output_dir: bool,
     only_extract_images: bool,
     extended_image_formats: bool,
@@ -25,18 +25,26 @@ pub fn decode(c: &Config) -> Result<Vec<PathBuf>, DecodingError> {
         Err(DecodingError::InputFileIsADirectory)?
     }
 
-    if !c.output.exists() {
-        if c.create_output_dir {
-            fs::create_dir_all(c.output).map_err(DecodingError::FailedToCreateOutputDirectory)?
-        } else {
-            Err(DecodingError::OutputDirectoryNotFound)?
-        }
-    } else if !c.output.is_dir() {
-        Err(DecodingError::OutputDirectoryIsAFile)?
-    }
+    let output = match c.output {
+        Some(output) => {
+            if !output.exists() {
+                if c.create_output_dir {
+                    fs::create_dir_all(output).map_err(DecodingError::FailedToCreateOutputDirectory)?
+                } else {
+                    Err(DecodingError::OutputDirectoryNotFound)?
+                }
+            } else if !output.is_dir() {
+                Err(DecodingError::OutputDirectoryIsAFile)?
+            }
+
+            output.to_path_buf()
+        },
+
+        None => c.input.with_extension("").to_path_buf()
+    };
 
     let ext = c.input.extension().ok_or(DecodingError::UnsupportedFormat(String::new()))?;
-    let ext = ext.to_str().ok_or(DecodingError::InputFileHasInvalidUTF8FileExtension(ext.to_os_string()))?;
+    let ext = ext.to_str().ok_or(DecodingError::InputFileHasInvalidUTF8FileExtension(c.input.file_name().unwrap().to_os_string()))?;
 
     let extraction_started = Instant::now();
 
@@ -80,7 +88,7 @@ pub fn decode(c: &Config) -> Result<Vec<PathBuf>, DecodingError> {
                         .map(|ext| ext.to_str().ok_or(DecodingError::ZipFileHasInvalidUTF8FileExtension(file_name.clone())))
                         .transpose()?;
 
-                    let outpath = c.output.join(Path::new(&format!("___tmp_pic_{}", counter)));
+                    let outpath = output.join(Path::new(&format!("___tmp_pic_{}", counter)));
 
                     trace!("File is a page. Creating an output file for it...");
                     let mut outfile = File::create(&outpath).map_err(|err| DecodingError::FailedToCreateOutputFile(err, outpath.clone()))?;
@@ -116,7 +124,7 @@ pub fn decode(c: &Config) -> Result<Vec<PathBuf>, DecodingError> {
             debug!("Renaming pictures...");
 
             for (i, page) in pages.into_iter().enumerate() {
-                let target = c.output.join(&match page.extension {
+                let target = output.join(&match page.extension {
                     None => format!("{:0page_num_len$}", i + 1, page_num_len=page_num_len),
                     Some(ref ext) => format!("{:0page_num_len$}.{}", i + 1, ext, page_num_len=page_num_len)
                 });
@@ -160,7 +168,7 @@ pub fn decode(c: &Config) -> Result<Vec<PathBuf>, DecodingError> {
             let page_num_len = images.len().to_string().len();
 
             for (i, image) in images.iter().enumerate() {
-                let outpath = c.output.join(Path::new(&format!("{:0page_num_len$}.jpg", i + 1, page_num_len=page_num_len)));
+                let outpath = output.join(Path::new(&format!("{:0page_num_len$}.jpg", i + 1, page_num_len=page_num_len)));
 
                 debug!("Extracting page {}/{}...", i + 1, images.len());
 
@@ -186,7 +194,7 @@ pub fn decode(c: &Config) -> Result<Vec<PathBuf>, DecodingError> {
 pub fn from_args(args: &ArgMatches) -> Result<Vec<PathBuf>, DecodingError> {
     decode(&Config {
         input: Path::new(args.value_of("input").unwrap()),
-        output: Path::new(args.value_of("output").unwrap()),
+        output: args.value_of("output").map(|out| Path::new(out)),
         create_output_dir: args.is_present("create-output-dir"),
         only_extract_images: args.is_present("only-extract-images"),
         extended_image_formats: args.is_present("extended-image-formats"),
