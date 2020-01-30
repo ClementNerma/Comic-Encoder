@@ -23,31 +23,31 @@ pub enum Method {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Config<'a> {
     /// The encoding method to use
-    method: Method,
+    pub method: Method,
     /// Path to the directory containing all chapters
-    chapters_dir: &'a Path,
+    pub chapters_dir: &'a Path,
     /// Path to either the output directory or the output file, depending on the method
-    output: Option<&'a Path>,
+    pub output: Option<&'a Path>,
     /// Create the output directory if it does not exist (or the output file's parent directory)
-    create_output_dir: bool,
+    pub create_output_dir: bool,
     /// Overwrite existing files instead of failing
-    overwrite: bool,
+    pub overwrite: bool,
     /// If provided, ignore every chapter directory that does not start by the provided prefix
-    dirs_prefix: Option<&'a str>,
+    pub dirs_prefix: Option<&'a str>,
     /// Start at a specific chapter number (chap. numbers start at 1)
-    start_chapter: Option<usize>,
+    pub start_chapter: Option<usize>,
     /// Ends at a specific chapter number (chap. numbers start at 1)
-    end_chapter: Option<usize>,
+    pub end_chapter: Option<usize>,
     /// Allows to use extended image formats that may not be supported by comic readers
-    extended_image_formats: bool,
+    pub extended_image_formats: bool,
     /// Disables natural sort and rely on native UTF-8 sort instead, which gives an intuitive order of items (e.g. `folder 10` will be _before_ `folder 2`)
-    disable_nat_sort: bool,
+    pub disable_nat_sort: bool,
     /// Displays the path of each chapter before it is put in a volume
-    show_chapters_path: bool,
+    pub show_chapters_path: bool,
     /// Display full output file names (by default they are truncated above 50 characters)
-    display_full_names: bool,
+    pub display_full_names: bool,
     /// Compresses losslessly all images, which is a lot slower but usually saves around 5% of space
-    compress_losslessly: bool
+    pub compress_losslessly: bool
 }
 
 /// Build a volume
@@ -395,6 +395,11 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
         Method::Single => std::cmp::min(c.end_chapter.unwrap_or(chapter_dirs.len()), start_chapter + usize::from(chap_per_vol))
     };
 
+    if end_chapter == 0 {
+        warn!("No chapter found. Nothing to do.");
+        return Ok(vec![]);
+    }
+
     let chapter_len = end_chapter - start_chapter;
 
     let volumes = lib::ceil_div(chapter_len, chap_per_vol.into());
@@ -433,6 +438,8 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
     if c.method == Method::Single {
         assert!(output_files.len() <= 1, "Internal error: more than 1 volume was produced for a single output file.");
     }
+
+    info!("Successfully built {} volume{}.", output_files.len(), if output_files.len() > 1 { "s" } else { "" });
 
     Ok(output_files)
 }

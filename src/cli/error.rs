@@ -223,3 +223,20 @@ impl fmt::Display for DecodingError {
         })
     }
 }
+
+// Error during the "rebuild" action
+pub enum RebuildingError {
+    DecodingError(DecodingError),
+    EncodingError(EncodingError),
+    InputFileIsRootDirectory
+}
+
+impl fmt::Display for RebuildingError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", match self {
+            Self::DecodingError(err) => err.to_string(),
+            Self::EncodingError(err) => err.to_string(),
+            Self::InputFileIsRootDirectory => "Input file is root directory".to_owned()
+        })
+    }
+}

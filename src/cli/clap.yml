@@ -146,3 +146,49 @@ subcommands:
             long: disable-natural-sorting
             short: n
             help: Disable natural sorting (use default UTF-8 sorting, a bit faster but unintuitive)
+
+  - rebuild:
+      about: Re-encode a comic (useful for converting PDF comics to CBZ ones for instance)
+      args:
+        - input:
+            index: 1
+            takes_value: true
+            required: true
+            help: The comic to rebuild
+        
+        - output:
+            long: output
+            short: o
+            takes_value: true
+            help: Output path for the rebuilt comic
+
+        - overwrite:
+            long: overwrite
+            help: Overwrite existing files instead of failing
+        
+        - temporary-dir:
+            long: temporary-dir
+            short: t
+            takes_value: true
+            help: Temporary directory where to extract comic book (default is "__tmp_comic_encoder_extract" in the input directory)
+
+        - only-extract-images:
+            long: only-extract-images
+            short: e
+            help: Only extract supported image formats
+
+        - extended-image-formats:
+            long: extended-image-formats
+            short: f
+            help: When using '--only-extract-images', extract additional image formats that may not be supported by all readers (e.g. TIF / RAW / CR2 / ... files)
+            requires:
+                - only-extract-images
+
+        - disable-natural-sorting:
+            long: disable-natural-sorting
+            short: n
+            help: Disable natural sorting (use default UTF-8 sorting, a bit faster but unintuitive)
+
+        - compress-losslessly:
+            long: compress-losslessly
+            help: Compress losslessly (a lot slower, save up about 5% of the final volumes' size)

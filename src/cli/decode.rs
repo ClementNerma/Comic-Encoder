@@ -10,12 +10,12 @@ use crate::lib;
 use super::error::DecodingError;
 
 pub struct Config<'a> {
-    input: &'a Path,
-    output: Option<&'a Path>,
-    create_output_dir: bool,
-    only_extract_images: bool,
-    extended_image_formats: bool,
-    disable_nat_sort: bool
+    pub input: &'a Path,
+    pub output: Option<&'a Path>,
+    pub create_output_dir: bool,
+    pub only_extract_images: bool,
+    pub extended_image_formats: bool,
+    pub disable_nat_sort: bool
 }
 
 pub fn decode(c: &Config) -> Result<Vec<PathBuf>, DecodingError> {
@@ -153,7 +153,7 @@ pub fn decode(c: &Config) -> Result<Vec<PathBuf>, DecodingError> {
 
             let mut images = vec![];
 
-            info!("Looking for images in the provided PDF...");
+            debug!("Looking for images in the provided PDF...");
 
             for (i, page) in pdf.pages().enumerate() {
                 trace!("Counting images from page {}...", i);
