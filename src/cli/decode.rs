@@ -40,7 +40,11 @@ pub fn decode(c: &Config) -> Result<Vec<PathBuf>, DecodingError> {
             output.to_path_buf()
         },
 
-        None => c.input.with_extension("").to_path_buf()
+        None => {
+            let path = c.input.with_extension("").to_path_buf();
+            fs::create_dir_all(&path).map_err(DecodingError::FailedToCreateOutputDirectory)?;
+            path
+        }
     };
 
     let ext = c.input.extension().ok_or(DecodingError::UnsupportedFormat(String::new()))?;
