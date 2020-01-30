@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::env;
 use std::fs::{self, File};
 use std::io;
 use std::time::Instant;
@@ -27,10 +28,13 @@ pub struct Config<'a> {
 
 /// Perform a decoding using the provided configuration object
 pub fn decode(c: &Config) -> Result<Vec<PathBuf>, DecodingError> {
+    // Get absolute path to the input for path manipulation
+    let input = env::current_dir().map_err(DecodingError::FailedToGetCWD)?.join(c.input);
+
     // Check if the input file exists
-    if !c.input.exists() {
+    if !input.exists() {
         Err(DecodingError::InputFileNotFound)?
-    } else if !c.input.is_file() {
+    } else if !input.is_file() {
         Err(DecodingError::InputFileIsADirectory)?
     }
 
@@ -51,15 +55,15 @@ pub fn decode(c: &Config) -> Result<Vec<PathBuf>, DecodingError> {
         },
 
         None => {
-            let path = c.input.with_extension("").to_path_buf();
+            let path = input.with_extension("").to_path_buf();
             fs::create_dir_all(&path).map_err(DecodingError::FailedToCreateOutputDirectory)?;
             path
         }
     };
 
     // Get the input file's extension to determine its format
-    let ext = c.input.extension().ok_or(DecodingError::UnsupportedFormat(String::new()))?;
-    let ext = ext.to_str().ok_or(DecodingError::InputFileHasInvalidUTF8FileExtension(c.input.file_name().unwrap().to_os_string()))?;
+    let ext = input.extension().ok_or(DecodingError::UnsupportedFormat(String::new()))?;
+    let ext = ext.to_str().ok_or(DecodingError::InputFileHasInvalidUTF8FileExtension(input.file_name().unwrap().to_os_string()))?;
 
     // Get timestamp to measure decoding time
     let extraction_started = Instant::now();
@@ -71,7 +75,7 @@ pub fn decode(c: &Config) -> Result<Vec<PathBuf>, DecodingError> {
 
             trace!("Opening input file...");
 
-            let file = File::open(c.input).map_err(DecodingError::FailedToOpenZipFile)?;
+            let file = File::open(input).map_err(DecodingError::FailedToOpenZipFile)?;
 
             trace!("Opening ZIP archive...");
 
@@ -169,7 +173,7 @@ pub fn decode(c: &Config) -> Result<Vec<PathBuf>, DecodingError> {
             debug!("Matched input format: PDF");
             trace!("Opening input file...");
 
-            let pdf = PDFFile::open(c.input).map_err(DecodingError::FailedToOpenPdfFile)?;
+            let pdf = PDFFile::open(input).map_err(DecodingError::FailedToOpenPdfFile)?;
 
             let mut images = vec![];
 

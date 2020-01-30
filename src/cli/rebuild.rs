@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::fs;
+use std::env;
 use clap::ArgMatches;
 use super::decode;
 use super::encode;
@@ -31,26 +32,29 @@ pub fn rebuild(c: &Config) -> Result<PathBuf, RebuildingError> {
     // Only the extension is removed to get a proper name
     // This means that with a file named "MyComic.cbz", the temporary directory will be "__tmp_comic_encoder_extract/MyComic"
 
+    // Get absolute path to the input for path manipulation
+    let input = env::current_dir().map_err(RebuildingError::FailedToGetCWD)?.join(c.input);
+
     // Get the temporary directory's wrapper (the one with the ugly name)
     let tmp_dir_wrapper = match c.temporary_dir {
         Some(path) => path.to_path_buf(),
-        None => c.input.parent().ok_or(RebuildingError::InputFileIsRootDirectory)?.join("__tmp_comic_encoder_extract")
+        None => input.parent().ok_or(RebuildingError::InputFileIsRootDirectory)?.join("__tmp_comic_encoder_extract")
     };
 
     // Get the directory inside the temporary directory when we will put all extracted pages
-    let tmp_dir_pages = tmp_dir_wrapper.join(c.input.with_extension("").file_name().ok_or(RebuildingError::InputFileIsRootDirectory)?);
+    let tmp_dir_pages = tmp_dir_wrapper.join(input.with_extension("").file_name().ok_or(RebuildingError::InputFileIsRootDirectory)?);
 
     // Get the path to the output directory
     let output = match c.output {
         Some(path) => path.to_path_buf(),
-        None => c.input.with_extension("cbz")
+        None => input.with_extension("cbz")
     };
 
     info!("==> (1/2) Extracting images...");
 
     // Extract all images from the input comic
     decode::decode(&decode::Config {
-        input: c.input,
+        input: &input,
         output: Some(&tmp_dir_pages),
         create_output_dir: true,
         only_extract_images: c.only_extract_images,

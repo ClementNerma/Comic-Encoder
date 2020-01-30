@@ -1,5 +1,6 @@
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
+use std::env;
 use std::ffi::OsString;
 use std::io::{Read, Write};
 use std::time::Instant;
@@ -306,7 +307,10 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
         }
     }
 
-    if !c.chapters_dir.is_dir() {
+    // Get absolute path to the chapters dir
+    let chapters_dir = env::current_dir().map_err(EncodingError::FailedToGetCWD)?.join(c.chapters_dir);
+
+    if !chapters_dir.is_dir() {
         Err(EncodingError::ChaptersDirectoryNotFound)?
     }
 
@@ -352,9 +356,9 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
 
         None => match c.method {
             // Output directory = input directory
-            Method::Compile(_) | Method::Individual => c.chapters_dir.to_path_buf(),
+            Method::Compile(_) | Method::Individual => chapters_dir.to_path_buf(),
             // Output directory = input file with ".cbz" extension
-            Method::Single => c.chapters_dir.join(Path::new(c.chapters_dir.file_name().unwrap_or(&OsString::from("root"))).with_extension("cbz"))
+            Method::Single => chapters_dir.join(Path::new(chapters_dir.file_name().unwrap_or(&OsString::from("root"))).with_extension("cbz"))
         }
     };
 
@@ -364,7 +368,7 @@ pub fn encode(c: &Config) -> Result<Vec<PathBuf>, EncodingError> {
     trace!("Reading chapter directories...");
 
     // Iterate over all items in the input directory
-    for entry in fs::read_dir(c.chapters_dir).map_err(EncodingError::FailedToReadChaptersDirectory)? {
+    for entry in fs::read_dir(chapters_dir).map_err(EncodingError::FailedToReadChaptersDirectory)? {
         let entry = entry.map_err(EncodingError::FailedToReadChaptersDirectory)?;
         let path = entry.path();
 

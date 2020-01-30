@@ -28,6 +28,7 @@ pub enum EncodingError {
     InvalidEndChapter,
     AtLeast1ChapterPerVolume,
     StartChapterCannotBeHigherThanEndChapter,
+    FailedToGetCWD(IOError),
     ChaptersDirectoryNotFound,
     OutputDirectoryNotFound,
     OutputFileHasInvalidUTF8Name(OsString),
@@ -61,11 +62,14 @@ impl fmt::Display for EncodingError {
             Self::InvalidEndChapter =>
                 "Please provide a valid end chapter (integer, strictly higher than 0)".to_owned(),
 
+            Self::AtLeast1ChapterPerVolume =>
+                "There must be at least 1 chapter per volume".to_owned(),
+
             Self::StartChapterCannotBeHigherThanEndChapter =>
                 "Start chapter cannot be higher than the end chapter".to_owned(),
 
-            Self::AtLeast1ChapterPerVolume =>
-                "There must be at least 1 chapter per volume".to_owned(),
+            Self::FailedToGetCWD(err) =>
+                format!("Failed to get current working directory: {}", err),
 
             Self::ChaptersDirectoryNotFound =>
                 "Chapters directory was not found".to_owned(),
@@ -147,6 +151,7 @@ pub enum DecodingError {
     InputFileNotFound,
     InputFileIsADirectory,
     OutputDirectoryNotFound,
+    FailedToGetCWD(IOError),
     FailedToCreateOutputDirectory(IOError),
     OutputDirectoryIsAFile,
     InputFileHasInvalidUTF8FileExtension(OsString),
@@ -175,6 +180,9 @@ impl fmt::Display for DecodingError {
 
             Self::OutputDirectoryNotFound =>
                 "Output directory was not found".to_owned(),
+
+            Self::FailedToGetCWD(err) =>
+                format!("Failed to get current working directory: {}", err),
 
             Self::FailedToCreateOutputDirectory(err) =>
                 format!("Failed to create output directory: {}", err),
@@ -228,6 +236,7 @@ impl fmt::Display for DecodingError {
 pub enum RebuildingError {
     DecodingError(DecodingError),
     EncodingError(EncodingError),
+    FailedToGetCWD(IOError),
     InputFileIsRootDirectory
 }
 
@@ -236,6 +245,7 @@ impl fmt::Display for RebuildingError {
         write!(f, "{}", match self {
             Self::DecodingError(err) => err.to_string(),
             Self::EncodingError(err) => err.to_string(),
+            Self::FailedToGetCWD(err) => format!("Failed to get current working directory: {}", err),
             Self::InputFileIsRootDirectory => "Input file is root directory".to_owned()
         })
     }
