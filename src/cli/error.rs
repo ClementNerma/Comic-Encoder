@@ -238,6 +238,7 @@ pub enum RebuildingError {
     EncodingError(EncodingError),
     FailedToGetCWD(IOError),
     InputFileIsRootDirectory,
+    FailedToRemoveExistingTemporaryDirectory(IOError),
     InputDirectoryNotFound,
     FailedToCreateOutputDirectory(IOError),
     OutputDirectoryNotFound,
@@ -261,6 +262,9 @@ impl fmt::Display for RebuildingError {
             Self::InputFileIsRootDirectory =>
                 "Input file is root directory".to_owned(),
             
+            Self::FailedToRemoveExistingTemporaryDirectory(err) =>
+                format!("Failed to remove existing temporary directory: {}", err),
+
             Self::InputDirectoryNotFound =>
                 "Input directory was not found".to_owned(),
 

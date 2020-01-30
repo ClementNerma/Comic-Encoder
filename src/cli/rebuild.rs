@@ -51,6 +51,14 @@ pub fn rebuild(c: &Config) -> Result<Vec<PathBuf>, RebuildingError> {
     // Get the directory inside the temporary directory when we will put all extracted pages
     let tmp_dir_pages = tmp_dir_wrapper.join(input.with_extension("").file_name().ok_or(RebuildingError::InputFileIsRootDirectory)?);
 
+    // If the temporary directory already exists (if for instance previous rebuilding operation was interrupted), remove it
+    // This is important because existing images from another comic may be remaining in this directory, which could result in
+    //  additional, unrelated pages being added to the rebuilt comic
+    if tmp_dir_pages.exists() {
+        debug!("Removing existing temporary directory...");
+        fs::remove_dir_all(&tmp_dir_pages).map_err(RebuildingError::FailedToRemoveExistingTemporaryDirectory)?;
+    }
+
     // Get the path to the output directory
     let output = match c.output {
         Some(path) => path.to_path_buf(),
