@@ -73,7 +73,7 @@ pub fn decode(c: &Config, is_rebuilding: bool) -> Result<Vec<PathBuf>, DecodingE
     let extraction_started = Instant::now();
 
     // Decode
-    let result = match ext {
+    let result = match ext.to_lowercase().as_str() {
         "zip" | "cbz" => {
             debug!("Matched input format: ZIP / CBZ");
             trace!("Opening input file...");

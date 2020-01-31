@@ -25,6 +25,7 @@ pub fn ceil_div<D: Div<Output=O> + Rem<Output=O> + Copy, O: Add<Output=V> + Part
 /// 
 /// ```
 /// assert_eq!(has_image_ext(Path::new("file.png"), false), true);
+/// assert_eq!(has_image_ext(Path::new("file.Jpeg"), false), true);
 /// assert_eq!(has_image_ext(Path::new("file.bgp"), false), false);
 ///
 /// // With extended image formats
@@ -35,7 +36,7 @@ pub fn has_image_ext(path: impl AsRef<Path>, extended: bool) -> bool {
         None => false,
         Some(ext) => match ext.to_str() {
             None => false,
-            Some(ext) => match ext {
+            Some(ext) => match ext.to_lowercase().as_str() {
                 "jpg" | "jpeg" | "png" | "bmp" => true,
 
                 "tif" | "tiff" | "gif" | "eps" | "raw" | "cr2" | "nef"  | "orf" | "sr2" |
@@ -54,11 +55,11 @@ pub fn has_image_ext(path: impl AsRef<Path>, extended: bool) -> bool {
 /// 
 /// ```
 /// assert_eq!(is_supported_for_decoding("zip"), true);
-/// assert_eq!(is_supported_for_decoding("pdf"), true);
+/// assert_eq!(is_supported_for_decoding("PdF"), true);
 /// assert_eq!(is_supported_for_decoding("mp3"), false);
 /// ```
 pub fn is_supported_for_decoding(ext: &str) -> bool {
-    match ext {
+    match ext.to_lowercase().as_str() {
         // Common archive formats
         "zip" => true,
 
