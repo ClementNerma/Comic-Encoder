@@ -334,7 +334,7 @@ pub fn encode(c: &Config, is_rebuilding: bool) -> Result<Vec<PathBuf>, EncodingE
 
     // Get absolute path to the chapters dir
     let chapters_dir = env::current_dir().map_err(EncodingError::FailedToGetCWD)?
-        .join(if c.root_chapter { c.chapters_dir } else { c.chapters_dir.parent().ok_or(EncodingError::RootCannotBeUsedAsSingleChapter)? });
+        .join(if !c.root_chapter { c.chapters_dir } else { c.chapters_dir.parent().ok_or(EncodingError::RootCannotBeUsedAsSingleChapter)? });
 
     if !chapters_dir.is_dir() {
         Err(EncodingError::ChaptersDirectoryNotFound)?
