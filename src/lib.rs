@@ -119,6 +119,9 @@ fn take_num(chars: &mut Peekable<Chars>) -> Vec<u8> {
 /// ```
 /// 
 pub fn natural_cmp(left: &str, right: &str) -> Ordering {
+    let left = left.to_lowercase();
+    let right = right.to_lowercase();
+
     let mut left = left.chars().peekable();
     let mut right = right.chars().peekable();
 

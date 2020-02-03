@@ -30,6 +30,8 @@ pub struct Config<'a> {
     pub chapters_dir: &'a Path,
     /// Path to either the output directory or the output file, depending on the method
     pub output: Option<&'a Path>,
+    // Add the start and end chapter at the end of each volume's filename
+    pub chapters_suffix: bool,
     /// Create the output directory if it does not exist (or the output file's parent directory)
     pub create_output_dir: bool,
     /// Overwrite existing files instead of failing
@@ -69,11 +71,24 @@ fn build(c: &Config<'_>, is_rebuilding: bool, output: &'_ Path, volume: usize, v
 
     // Get the file name for this volume
     let file_name = match c.method {
-        Method::Compile(_) => format!("Volume-{:0vol_num_len$}.cbz", volume, vol_num_len = vol_num_len),
+        Method::Compile(_) => if !c.chapters_suffix || chapters.len() == 0 {
+            format!("Volume-{:0vol_num_len$}.cbz", volume, vol_num_len=vol_num_len)
+        } else {
+            format!(
+                "Volume-{:0vol_num_len$} (c{:0chapter_num_len$}-c{:0chapter_num_len$}).cbz",
+                volume,
+                start_chapter,
+                start_chapter + chapters.len() - 1,
+                vol_num_len = vol_num_len,
+                chapter_num_len = chapter_num_len
+            )
+        },
+
         Method::Individual => {
             assert_eq!(chapters.len(), 1, "Internal error: individual chapter's volume does contain exactly 1 chapter!");
             format!("{}.cbz", chapters[0].2)
         },
+
         Method::Single => output.file_name().unwrap().to_str().unwrap().to_owned()
     };
 
@@ -479,7 +494,7 @@ pub fn encode(c: &Config, is_rebuilding: bool) -> Result<Vec<PathBuf>, EncodingE
 
         // If this volume contains enough chapters, build it
         if volume_chapters.len() == chap_per_vol.into() {
-            output_files.push(build(c, is_rebuilding, &output,  volume, vol_num_len, chapter_num_len, volume_start_chapter, &volume_chapters)?);
+            output_files.push(build(c, is_rebuilding, &output, volume, vol_num_len, chapter_num_len, volume_start_chapter, &volume_chapters)?);
             volume_start_chapter += volume_chapters.len();
             volume_chapters = vec![];
             volume += 1;
@@ -521,6 +536,7 @@ pub fn from_args(args: &ArgMatches) -> Result<Vec<PathBuf>, EncodingError> {
         method,
         chapters_dir: Path::new(args.value_of("chapters-dir").unwrap()),
         output: args.value_of("output").map(Path::new),
+        chapters_suffix: args.is_present("chapters-suffix"),
         create_output_dir: args.is_present("create-output-dir"),
         overwrite: args.is_present("overwrite"),
         dirs_prefix: args.value_of("dirs-prefix"),

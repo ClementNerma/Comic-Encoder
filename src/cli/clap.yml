@@ -56,10 +56,16 @@ subcommands:
             takes_value: true
             help: Path to the directory where the volumes should be put or to the single volume
 
+        - chapters-suffix:
+            long: chapters-suffix
+            help: Add the start and end chapter at the end of each volume's filename
+            requires:
+                - compile
+
         - create-output-dir:
             long: create-output-dir
             help: Creates output directory if it does not exist yet
-        
+
         - overwrite:
             long: overwrite
             help: Overwrite existing files instead of failing
