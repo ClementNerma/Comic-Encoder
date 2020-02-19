@@ -12,5 +12,5 @@ zip = "0.5.4"
 pdf = { git = "https://github.com/pdf-rs/pdf.git" }
 
 [[bin]]
-name = "comic-encoder"
+name = "comic-enc"
 path = "src/main.rs"
