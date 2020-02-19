@@ -10,3 +10,7 @@ log = "0.4.8"
 fern = { version = "0.5.9", features = [ "colored" ] }
 zip = "0.5.4"
 pdf = { git = "https://github.com/pdf-rs/pdf.git" }
+
+[[bin]]
+name = "comic-encoder"
+path = "src/main.rs"
