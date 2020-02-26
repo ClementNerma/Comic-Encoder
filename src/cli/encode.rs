@@ -392,9 +392,9 @@ pub fn encode(c: &Config, is_rebuilding: bool) -> Result<Vec<PathBuf>, EncodingE
     let mut chapter_dirs: Vec<(PathBuf, String)> = vec![];
 
     if c.root_chapter {
-        let chap_name = c.chapters_dir.file_name().unwrap();
+        let chap_name = chapters_dir.file_name().unwrap();
         chapter_dirs.push((
-            c.chapters_dir.to_path_buf(),
+            chapters_dir.to_path_buf(),
             chap_name.to_str().ok_or(EncodingError::ItemHasInvalidUTF8Name(chap_name.to_os_string()))?.to_owned()
         ))
     } else {
