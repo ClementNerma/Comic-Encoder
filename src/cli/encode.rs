@@ -36,6 +36,8 @@ pub struct Config<'a> {
     pub create_output_dir: bool,
     /// Overwrite existing files instead of failing
     pub overwrite: bool,
+    /// Ignore output files that already exist
+    pub skip_existing: bool,
     /// If provided, ignore every chapter directory that does not start by the provided prefix
     pub dirs_prefix: Option<&'a str>,
     /// Start at a specific chapter number (chap. numbers start at 1)
@@ -100,6 +102,11 @@ fn build(c: &Config<'_>, is_rebuilding: bool, output: &'_ Path, volume: usize, v
 
     // Fail if the target file already exists and '--overwrite' has not been specified
     if !c.overwrite && zip_path.exists() {
+        if c.skip_existing {
+            warn!("Warning: skipping volume {} containing chapters {} to {} as its output file '{}' already exists (--skip-existing provided)", volume, start_chapter, start_chapter + chapters.len() - 1, zip_path.to_string_lossy());
+            return Ok(zip_path);
+        }
+
         Err(EncodingError::OutputFileAlreadyExists(volume, zip_path.clone()))?
     }
 
@@ -539,6 +546,7 @@ pub fn from_args(args: &ArgMatches) -> Result<Vec<PathBuf>, EncodingError> {
         chapters_suffix: args.is_present("chapters-suffix"),
         create_output_dir: args.is_present("create-output-dir"),
         overwrite: args.is_present("overwrite"),
+        skip_existing: args.is_present("skip-existing"),
         dirs_prefix: args.value_of("dirs-prefix"),
         start_chapter: args.value_of("start-chapter").map(str::parse::<usize>).transpose().map_err(|_| EncodingError::InvalidStartChapter)?,
         end_chapter: args.value_of("end-chapter").map(str::parse::<usize>).transpose().map_err(|_| EncodingError::InvalidEndChapter)?,

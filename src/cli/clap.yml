@@ -70,6 +70,12 @@ subcommands:
             long: overwrite
             help: Overwrite existing files instead of failing
 
+        - skip-existing:
+            long: skip-existing
+            help: Skip output chapter files that already exist
+            requires:
+                - individual
+
         - dirs-prefix:
             long: dirs-prefix
             short: d
@@ -189,6 +195,10 @@ subcommands:
         - overwrite:
             long: overwrite
             help: Overwrite existing files instead of failing
+
+        - skip-existing:
+            long: skip-existing
+            help: Skip output chapter files that already exist
         
         - temporary-dir:
             long: temporary-dir
