@@ -102,11 +102,15 @@ comic-enc rebuild my-book.pdf
 
 This will create a `my-book.cbz` file, a format which is more widely supported by comic readers.
 
-**Tip:** To accelerate the operation, you can specify the temporary directory used to rebuild the comic as a directory on another drive with `--temporary-dir`, which avoids keeping the source drive occuppied. Huge performance improvements can be seen when the temporary directory in on a SSD. The temporary directory is removed when the operation is complete.
+#### Accelerating rebuild of large batches
+
+To accelerate the operation, you can specify the temporary directory used to rebuild the comic as a directory on another drive with `--temporary-dir`, which avoids keeping the source drive occuppied. Huge performance improvements can be seen when the temporary directory in on a SSD. The temporary directory is removed when the operation is complete.
 
 ```shell
 comic-enc rebuild /mnt/external_hard_drive/my-book.pdf --temporary-dir /mnt/super_fast_ssd/comic-enc_tmp_dir
 ```
+
+Note that the temporary directory _must_ be located on an external drive, otherwise it will be useless. Also, if the source file is located on a SSD (not a hard drive), it's pointless to put the temporary directory on an external hard drive ; only an external SSD will be efficiant in this case.
 
 ### Rebuild multiple comics at once
 
