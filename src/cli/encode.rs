@@ -477,7 +477,7 @@ pub fn encode(c: &Config, is_rebuilding: bool) -> Result<Vec<PathBuf>, EncodingE
 
     if !is_rebuilding {
         info!(
-            "Going to treat chapter{} {} to {} ({} out of {}, {} were ignored) into {} volume{}.",
+            "Going to treat chapter{} {} to {} ({} out of {}, {} to ignore) into {} volume{}.",
             if chapter_len > 0 { "s" } else { "" },
             start_chapter + 1,
             end_chapter,
