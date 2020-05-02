@@ -284,25 +284,30 @@ fn build(c: &Config<'_>, is_rebuilding: bool, output: &'_ Path, volume: usize, v
     // Format elapsed time
     let elapsed = format!("{}.{:03} s", elapsed.as_secs(), elapsed.subsec_millis());
 
+    // Padding for after the filename
+    let filename_right_padding = if success_display_file_name.len() < 50 { " ".repeat(50 - success_display_file_name.len()) } else { String::new() };
+
     if c.method == Method::Individual || is_rebuilding {
         info!(
-            "{}Successfully written volume {:0vol_num_len$} / {} to file '{}', containing {} pages in {}.",
+            "{}Successfully written volume {:0vol_num_len$} / {} to file '{}'{}, containing {} pages in {}.",
             if is_rebuilding { "===> " } else { "" },
             volume,
             volumes,
             success_display_file_name,
+            filename_right_padding,
             pics_counter,
             elapsed,
             vol_num_len = vol_num_len
         );
     } else {
         info!(
-            "Successfully written volume {} / {} (chapters {:0chapter_num_len$} to {:0chapter_num_len$}) in '{}', containing {} pages in {}.",
+            "Successfully written volume {} / {} (chapters {:0chapter_num_len$} to {:0chapter_num_len$}) in '{}'{}, containing {} pages in {}.",
             volume_display_name,
             volumes,
             start_chapter,
             start_chapter + chapters.len() - 1,
             success_display_file_name,
+            filename_right_padding,
             pics_counter,
             elapsed,
             chapter_num_len = chapter_num_len
