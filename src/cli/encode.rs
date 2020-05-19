@@ -289,7 +289,7 @@ fn build(c: &Config<'_>, is_rebuilding: bool, output: &'_ Path, volume: usize, v
 
     if c.method == Method::Individual || is_rebuilding {
         info!(
-            "{}Successfully written volume {:0vol_num_len$} / {} to file '{}'{}, containing {} pages in {}.",
+            "{}Successfully written volume {:0vol_num_len$} / {} to file '{}{}', containing {} pages in {}.",
             if is_rebuilding { "===> " } else { "" },
             volume,
             volumes,
