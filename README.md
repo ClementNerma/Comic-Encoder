@@ -115,7 +115,7 @@ Note that the temporary directory _must_ be located on an external drive, otherw
 ### Rebuild multiple comics at once
 
 ```shell
-comic-enc rebuild ./books-dir/
+comic-enc rebuild --dir ./books-dir/
 ```
 
 This is equivalent to calling the `rebuild` action on each comic in the directory.
