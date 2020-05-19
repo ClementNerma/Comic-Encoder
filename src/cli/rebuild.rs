@@ -19,7 +19,8 @@ pub struct Config<'a> {
     only_extract_images: bool,
     extended_image_formats: bool,
     disable_nat_sort: bool,
-    compress_losslessly: bool
+    compress_losslessly: bool,
+    skip_bad_pdf_pages: bool
 }
 
 /// Rebuild a comic using the provided configuration
@@ -81,7 +82,8 @@ pub fn rebuild(c: &Config) -> Result<Vec<PathBuf>, RebuildingError> {
         create_output_dir: true,
         only_extract_images: c.only_extract_images,
         extended_image_formats: c.extended_image_formats,
-        disable_nat_sort: c.disable_nat_sort
+        disable_nat_sort: c.disable_nat_sort,
+        skip_bad_pdf_pages: c.skip_bad_pdf_pages
     }, true).map_err(RebuildingError::DecodingError)?;
 
     info!("==> Encoding images in a book ({})...", if c.compress_losslessly { "compression enabled" } else { "no compression"});
@@ -191,7 +193,8 @@ fn rebuild_dir(c: &Config, input: &Path) -> Result<Vec<PathBuf>, RebuildingError
             only_extract_images: c.only_extract_images,
             extended_image_formats: c.extended_image_formats,
             disable_nat_sort: c.disable_nat_sort,
-            compress_losslessly: c.compress_losslessly
+            compress_losslessly: c.compress_losslessly,
+            skip_bad_pdf_pages: c.skip_bad_pdf_pages
         })?);
     }
 
@@ -211,6 +214,7 @@ pub fn from_args(args: &ArgMatches) -> Result<Vec<PathBuf>, RebuildingError> {
         only_extract_images: args.is_present("only-extract-images"),
         extended_image_formats: args.is_present("extended-image-formats"),
         disable_nat_sort: args.is_present("disable-natural-sorting"),
-        compress_losslessly: args.is_present("compress-losslessly")
+        compress_losslessly: args.is_present("compress-losslessly"),
+        skip_bad_pdf_pages: args.is_present("skip-bad-pdf-pages")
     })
 }

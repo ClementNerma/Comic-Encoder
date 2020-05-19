@@ -19,7 +19,7 @@ args:
       conflicts_with:
         - silent
         - debug
-  
+
   - debug:
       global: true
       long: debug
@@ -60,7 +60,7 @@ subcommands:
             long: chapters-suffix
             help: Add the start and end chapter at the end of each volume's filename
             requires:
-                - compile
+              - compile
 
         - create-output-dir:
             long: create-output-dir
@@ -74,7 +74,7 @@ subcommands:
             long: skip-existing
             help: Skip output chapter files that already exist
             requires:
-                - individual
+              - individual
 
         - dirs-prefix:
             long: dirs-prefix
@@ -102,8 +102,8 @@ subcommands:
             short: r
             help: Consider input path as a single chapter directory (don't look at sub-directory chapters)
             conflicts_with:
-                - start-chapter
-                - end-chapter
+              - start-chapter
+              - end-chapter
 
         - disable-natural-sorting:
             long: disable-natural-sorting
@@ -114,7 +114,7 @@ subcommands:
             long: show-chapters-path
             short: p
             help: Show path for each chapter
-        
+
         - display-full-names:
             long: display-full-names
             help: Display full file names (by default names are truncated above 50 characters)
@@ -122,7 +122,7 @@ subcommands:
         - compress-losslessly:
             long: compress-losslessly
             help: Compress losslessly (a lot slower, save up about 5% of the final volumes' size)
-        
+
       groups:
         - method:
             required: true
@@ -160,12 +160,16 @@ subcommands:
             short: f
             help: When using '--only-extract-images', extract additional image formats that may not be supported by all readers (e.g. TIF / RAW / CR2 / ... files)
             requires:
-                - only-extract-images
+              - only-extract-images
 
         - disable-natural-sorting:
             long: disable-natural-sorting
             short: n
             help: Disable natural sorting (use default UTF-8 sorting, a bit faster but unintuitive)
+
+        - skip-bad-pdf-pages:
+            long: skip-bad-pdf-pages
+            help: Continue extraction even if some pages cannot be extracted from the input PDF (only if input file is PDF)
 
   - rebuild:
       about: Re-encode a comic (useful for converting PDF comics to CBZ ones for instance)
@@ -175,13 +179,13 @@ subcommands:
             takes_value: true
             required: true
             help: The comic to rebuild, or a directory of comics with '--dir'
-        
+
         - output:
             long: output
             short: o
             takes_value: true
             help: Output path for the rebuilt comic
-        
+
         - dir:
             long: dir
             help: Build all comics in the input directory
@@ -190,7 +194,7 @@ subcommands:
             long: create-output-dir
             help: Create output directory if it does not exist yet when using '--dir'
             requires:
-                - dir
+              - dir
 
         - overwrite:
             long: overwrite
@@ -199,7 +203,7 @@ subcommands:
         - skip-existing:
             long: skip-existing
             help: Skip output chapter files that already exist
-        
+
         - temporary-dir:
             long: temporary-dir
             short: t
@@ -216,12 +220,16 @@ subcommands:
             short: f
             help: When using '--only-extract-images', extract additional image formats that may not be supported by all readers (e.g. TIF / RAW / CR2 / ... files)
             requires:
-                - only-extract-images
+              - only-extract-images
 
         - disable-natural-sorting:
             long: disable-natural-sorting
             short: n
             help: Disable natural sorting (use default UTF-8 sorting, a bit faster but unintuitive)
+
+        - skip-bad-pdf-pages:
+            long: skip-bad-pdf-pages
+            help: Continue extraction even if some pages cannot be extracted from the input PDF (only if input file is PDF)
 
         - compress-losslessly:
             long: compress-losslessly

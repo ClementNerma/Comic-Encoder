@@ -23,7 +23,9 @@ pub struct Config<'a> {
     /// When only extracting images, allow extended image formats that may not be supported by comic readers
     pub extended_image_formats: bool,
     /// Disables natural sort and rely on native UTF-8 sort instead, which gives an intuitive order of items (e.g. `folder 10` will be _before_ `folder 2`)
-    pub disable_nat_sort: bool
+    pub disable_nat_sort: bool,
+    /// Skip bad images in PDF files
+    pub skip_bad_pdf_pages: bool
 }
 
 /// Perform a decoding using the provided configuration object
@@ -186,12 +188,20 @@ pub fn decode(c: &Config, is_rebuilding: bool) -> Result<Vec<PathBuf>, DecodingE
             for (i, page) in pdf.pages().enumerate() {
                 trace!("Counting images from page {}...", i);
 
-                let page = page.map_err(|err| DecodingError::FailedToGetPdfPage(i + 1, err))?;
-                let resources = page.resources(&pdf).map_err(|err| DecodingError::FailedToGetPdfPageResources(i + 1, err))?;
-                images.extend(resources.xobjects.iter().filter_map(|(_, o)| match o {
-                    XObject::Image(im) => Some(im.clone()),
-                    _ => None
-                }));
+                match page.map_err(|err| DecodingError::FailedToGetPdfPage(i + 1, err)) {
+                    Err(err) if c.skip_bad_pdf_pages => warn!("{}", err),
+                    Err(err) => return Err(err),
+                    Ok(page) => match page.resources(&pdf).map_err(|err| DecodingError::FailedToGetPdfPageResources(i + 1, err)) {
+                        Err(err) if c.skip_bad_pdf_pages => warn!("{}", err),
+                        Err(err) => return Err(err),
+                        Ok(resources) => {
+                            images.extend(resources.xobjects.iter().filter_map(|(_, o)| match o {
+                                XObject::Image(im) => Some(im.clone()),
+                                _ => None
+                            }));
+                        }
+                    }
+                }
             }
 
             info!("{}Extracting {} images from PDF...", rebuild_prefix, images.len());
@@ -238,6 +248,7 @@ pub fn from_args(args: &ArgMatches) -> Result<Vec<PathBuf>, DecodingError> {
         create_output_dir: args.is_present("create-output-dir"),
         only_extract_images: args.is_present("only-extract-images"),
         extended_image_formats: args.is_present("extended-image-formats"),
-        disable_nat_sort: args.is_present("disable-natural-sorting")
+        disable_nat_sort: args.is_present("disable-natural-sorting"),
+        skip_bad_pdf_pages: args.is_present("skip-bad-pdf-pages")
     }, false)
 }
