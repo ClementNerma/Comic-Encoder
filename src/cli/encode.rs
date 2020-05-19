@@ -349,9 +349,15 @@ pub fn encode(c: &Config, is_rebuilding: bool) -> Result<Vec<PathBuf>, EncodingE
         }
     }
 
+    // Get current directory
+    let cwd = env::current_dir().map_err(EncodingError::FailedToGetCWD)?;
+
     // Get absolute path to the chapters dir
-    let chapters_dir = env::current_dir().map_err(EncodingError::FailedToGetCWD)?
-        .join(if !c.root_chapter { c.chapters_dir } else { c.chapters_dir.parent().ok_or(EncodingError::RootCannotBeUsedAsSingleChapter)? });
+    let chapters_dir = cwd.join(if !c.root_chapter {
+        c.chapters_dir
+    } else {
+        c.chapters_dir.parent().ok_or(EncodingError::RootCannotBeUsedAsSingleChapter)?
+    });
 
     if !chapters_dir.is_dir() {
         Err(EncodingError::ChaptersDirectoryNotFound)?
@@ -360,11 +366,13 @@ pub fn encode(c: &Config, is_rebuilding: bool) -> Result<Vec<PathBuf>, EncodingE
     // Create the output directory if needed, and get the output path
     let output = match c.output {
         Some(output) => {
+            let output = cwd.join(output);
+
             match c.method {
                 Method::Compile(_) | Method::Individual => {
                     if !output.is_dir() {
                         if c.create_output_dir {
-                            fs::create_dir_all(output).map_err(EncodingError::FailedToCreateOutputDirectory)?
+                            fs::create_dir_all(&output).map_err(EncodingError::FailedToCreateOutputDirectory)?
                         } else {
                             Err(EncodingError::OutputDirectoryNotFound)?
                         }
@@ -394,7 +402,7 @@ pub fn encode(c: &Config, is_rebuilding: bool) -> Result<Vec<PathBuf>, EncodingE
                 }
             }
 
-            output.to_path_buf()
+            output
         },
 
         None => match c.method {
