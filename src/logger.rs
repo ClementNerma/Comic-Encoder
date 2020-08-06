@@ -22,7 +22,7 @@ pub fn start(level: LevelFilter) {
             let secs = elapsed.as_secs();
 
             out.finish(format_args!(
-                "{}[{: >2}m {: >2}.{:03}s] {}: {}",
+                "{}[{: >2}m {: >2}.{:03}s] {}: {}\x1B[0m",
                 format_args!("\x1B[{}m", colors_line.get_color(&record.level()).to_fg_str()),
                 secs / 60,
                 secs % 60,

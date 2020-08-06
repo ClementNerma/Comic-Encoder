@@ -5,21 +5,6 @@ use std::fmt;
 use zip::result::ZipError;
 use pdf::error::PdfError;
 
-/// Global CLI error
-pub enum GlobalError {
-    ActionNameIsMissing,
-    UnknownAction(String)
-}
-
-impl fmt::Display for GlobalError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", match self {
-            Self::ActionNameIsMissing => "Please provide an action to perform. Use '--help' to see the list of available commands.".to_owned(),
-            Self::UnknownAction(name) => format!("Unknown action '{}'. Use '--help' to see the list of available commands.", name)
-        })
-    }
-}
-
 /// Error during in the "encode" action
 pub enum EncodingError {
     MissingOutputPath,
@@ -28,17 +13,21 @@ pub enum EncodingError {
     InvalidEndChapter,
     AtLeast1ChapterPerVolume,
     StartChapterCannotBeHigherThanEndChapter,
-    RootCannotBeUsedAsSingleChapter,
     FailedToGetCWD(IOError),
     ChaptersDirectoryNotFound,
     OutputDirectoryNotFound,
     OutputFileHasInvalidUTF8Name(OsString),
-    OutputFileIsADirectory,
+    SingleInputDirectoryNotFound,
+    SingleInputDirectoryIsNotADirectory,
+    SingleInputDirectorHasNoName,
+    SingleOutputFileHasNoName,
     FailedToCreateOutputDirectory(IOError),
     FailedToReadChaptersDirectory(IOError),
     ItemHasInvalidUTF8Name(OsString),
     FailedToCreateVolumeFile(usize, IOError),
-    OutputFileAlreadyExists(usize, PathBuf),
+    OutputVolumeFileAlreadyExists(usize, PathBuf),
+    OutputVolumeFileIsADirectory(usize, PathBuf),
+    FailedToOverwriteOutputVolumeFile(usize, PathBuf, IOError),
     FailedToListChapterDirectoryFiles { volume: usize, chapter: usize, chapter_path: PathBuf, err: IOError },
     FailedToOpenImage { volume: usize, chapter: usize, chapter_path: PathBuf, image_path: PathBuf, err: IOError },
     FailedToCreateChapterDirectoryInZip { volume: usize, chapter: usize, dir_name: String, err: ZipError },
@@ -53,40 +42,46 @@ impl fmt::Display for EncodingError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", match self {
             Self::MissingOutputPath =>
-                "Please provide an output path".to_owned(),
+                "Please provide an output path".to_string(),
 
             Self::InvalidNumberOfChaptersPerVolume =>
-                "Please provide a valid number of chapters per volume (integer, strictly higher than 0)".to_owned(),
+                "Please provide a valid number of chapters per volume (integer, strictly higher than 0)".to_string(),
 
             Self::InvalidStartChapter =>
-                "Please provide a valid start chapter (integer, strictly higher than 0)".to_owned(),
+                "Please provide a valid start chapter (integer, strictly higher than 0)".to_string(),
 
             Self::InvalidEndChapter =>
-                "Please provide a valid end chapter (integer, strictly higher than 0)".to_owned(),
+                "Please provide a valid end chapter (integer, strictly higher than 0)".to_string(),
 
             Self::AtLeast1ChapterPerVolume =>
-                "There must be at least 1 chapter per volume".to_owned(),
+                "There must be at least 1 chapter per volume".to_string(),
 
             Self::StartChapterCannotBeHigherThanEndChapter =>
-                "Start chapter cannot be higher than the end chapter".to_owned(),
-
-            Self::RootCannotBeUsedAsSingleChapter =>
-                "Root cannot be used as single chapter".to_owned(),
+                "Start chapter cannot be higher than the end chapter".to_string(),
 
             Self::FailedToGetCWD(err) =>
                 format!("Failed to get current working directory: {}", err),
 
             Self::ChaptersDirectoryNotFound =>
-                "Chapters directory was not found".to_owned(),
+                "Chapters directory was not found".to_string(),
             
             Self::OutputDirectoryNotFound =>
-                "Output directory was not found".to_owned(),
+                "Output directory was not found".to_string(),
 
             Self::OutputFileHasInvalidUTF8Name(name) =>
-                format!("Output file has not a valid UTF-8 name ('{}')", name.to_string_lossy()),
+                format!("Output file does not have a valid UTF-8 name ('{}')", name.to_string_lossy()),
 
-            Self::OutputFileIsADirectory =>
-                "Output file is a directory".to_owned(),
+            Self::SingleInputDirectoryNotFound =>
+                "Input directory was not found".to_string(),
+
+            Self::SingleInputDirectoryIsNotADirectory =>
+                "Input directory is not a directory".to_string(),
+
+            Self::SingleInputDirectorHasNoName =>
+                "Input directory has no name, so an output name cannot be inferred".to_string(),
+
+            Self::SingleOutputFileHasNoName =>
+                "Output file does not have a valid name (e.g. '.' or '/')".to_string(),
 
             Self::FailedToCreateOutputDirectory(err) =>
                 format!("Failed to create output directory: {}", err),
@@ -100,9 +95,15 @@ impl fmt::Display for EncodingError {
             Self::FailedToCreateVolumeFile(volume, err) =>
                 format!("Failed to create the file of volume {}: {}", volume, err),
             
-            Self::OutputFileAlreadyExists(volume, path) =>
+            Self::OutputVolumeFileAlreadyExists(volume, path) =>
                 format!("Failed to create the file of volume {} because path '{}' already exists (use '--overwrite' to force writing)", volume, path.to_string_lossy()),
-                
+
+            Self::OutputVolumeFileIsADirectory(volume, path) =>
+                format!("Failed to create the file of volume {} because path '{}' is a directory", volume, path.to_string_lossy()),
+
+            Self::FailedToOverwriteOutputVolumeFile(volume, path, err) =>
+                format!("Failed to overwrite the file of volume {} at path '{}': {}", volume, path.to_string_lossy(), err),
+
             Self::FailedToListChapterDirectoryFiles { volume, chapter, chapter_path, err } =>
                 format!(
                     "Failed to list files for chapter {} in volume {} at '{}': {}",
@@ -181,13 +182,13 @@ impl fmt::Display for DecodingError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", match self {
             Self::InputFileNotFound =>
-                "Input file was not found".to_owned(),
+                "Input file was not found".to_string(),
 
             Self::InputFileIsADirectory =>
-                "Input file is a directory".to_owned(),
+                "Input file is a directory".to_string(),
 
             Self::OutputDirectoryNotFound =>
-                "Output directory was not found".to_owned(),
+                "Output directory was not found".to_string(),
 
             Self::FailedToGetCWD(err) =>
                 format!("Failed to get current working directory: {}", err),
@@ -196,7 +197,7 @@ impl fmt::Display for DecodingError {
                 format!("Failed to create output directory: {}", err),
 
             Self::OutputDirectoryIsAFile =>
-                "Output directory is a file".to_owned(),
+                "Output directory is a file".to_string(),
 
             Self::InputFileHasInvalidUTF8FileExtension(path) =>
                 format!("Input file has invalid UTF-8 file extension ('{}')", path.to_string_lossy()),
@@ -236,64 +237,6 @@ impl fmt::Display for DecodingError {
 
             Self::FailedToExtractPdfImage(page, path, err) =>
                 format!("Failed extract PDF image from page n°{} to path '{}': {}", page, path.to_string_lossy(), err)
-        })
-    }
-}
-
-// Error during the "rebuild" action
-pub enum RebuildingError {
-    DecodingError(DecodingError),
-    EncodingError(EncodingError),
-    FailedToGetCWD(IOError),
-    InputFileIsADirectory,
-    InputFileIsRootDirectory,
-    FailedToRemoveExistingTemporaryDirectory(IOError),
-    InputDirectoryNotFound,
-    FailedToCreateOutputDirectory(IOError),
-    OutputDirectoryNotFound,
-    OutputDirectoryIsAFile,
-    FailedToReadInputDirectory(IOError),
-    InputItemHasInvalidUTF8Extension(PathBuf)
-}
-
-impl fmt::Display for RebuildingError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", match self {
-            Self::DecodingError(err) =>
-                err.to_string(),
-
-            Self::EncodingError(err) =>
-                err.to_string(),
-
-            Self::FailedToGetCWD(err) =>
-                format!("Failed to get current working directory: {}", err),
-
-            Self::InputFileIsADirectory =>
-                "Input file is a directory ; if you want to rebuild all comics in it, use the '--dir' flag".to_owned(),
-
-            Self::InputFileIsRootDirectory =>
-                "Input file is root directory".to_owned(),
-            
-            Self::FailedToRemoveExistingTemporaryDirectory(err) =>
-                format!("Failed to remove existing temporary directory: {}", err),
-
-            Self::InputDirectoryNotFound =>
-                "Input directory was not found".to_owned(),
-
-            Self::FailedToCreateOutputDirectory(err) =>
-                format!("Failed to create output directory: {}", err),
-
-            Self::OutputDirectoryIsAFile =>
-                "Output directory is a file".to_owned(),
-
-            Self::FailedToReadInputDirectory(err) =>
-                format!("Failed to read input directory: {}", err),
-
-            Self::InputItemHasInvalidUTF8Extension(path) =>
-                format!("An item in the input directory has an invalid UTF-8 extension ('{}')", path.to_string_lossy()),
-
-            Self::OutputDirectoryNotFound =>
-                "Output directory was not found".to_owned()
         })
     }
 }

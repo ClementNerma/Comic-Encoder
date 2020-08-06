@@ -38,7 +38,7 @@ Considering the following directory at `/home/me/book`:
 ### Compile multiple chapters into volumes of 5 chapters each
 
 ```
-> comic-enc encode /home/me/book --compile 5 -o ./build/
+> comic-enc encode /home/me/book compile 5 -o ./build/
 ```
 
 ```
@@ -51,7 +51,7 @@ build
 ### Compile chapters into individual volumes
 
 ```shell
-> comic-enc encode /home/me/book --individual -o ./build/
+> comic-enc encode /home/me/book each -o ./build/
 ```
 
 ```
@@ -73,7 +73,7 @@ build
 ### Compile multiple chapters into a single volume
 
 ```shell
-comic-enc encode /home/me/book --single
+comic-enc encode /home/me/book single
 ```
 
 This will create a file named `book.cbz` containing all chapters.
@@ -81,7 +81,7 @@ This will create a file named `book.cbz` containing all chapters.
 ### Compile a single directory of pictures
 
 ```shell
-comic-enc encode /home/me/pictures --single --root-chapter
+comic-enc encode /home/me/pictures single
 ```
 
 This will create a single file named `pictures.cbz` containing all pictures directly under `/home/me/pictures`.
@@ -94,45 +94,10 @@ comic-enc decode ./build/FirstChapter_1.cbz
 
 This will create a directory named `FirstChapter_1` containing the volume's images.
 
-### Rebuild an existing comic
-
-```shell
-comic-enc rebuild my-book.pdf
-```
-
-This will create a `my-book.cbz` file, a format which is more widely supported by comic readers.
-
-#### Accelerating rebuild of large batches
-
-To accelerate the operation, you can specify the temporary directory used to rebuild the comic as a directory on another drive with `--temporary-dir`, which avoids keeping the source drive occuppied. Huge performance improvements can be seen when the temporary directory in on a SSD. The temporary directory is removed when the operation is complete.
-
-```shell
-comic-enc rebuild /mnt/external_hard_drive/my-book.pdf --temporary-dir /mnt/super_fast_ssd/comic-enc_tmp_dir
-```
-
-Note that the temporary directory _must_ be located on an external drive, otherwise it will be useless. Also, if the source file is located on a SSD (not a hard drive), it's pointless to put the temporary directory on an external hard drive ; only an external SSD will be efficiant in this case.
-
-### Rebuild multiple comics at once
-
-```shell
-comic-enc rebuild --dir ./books-dir/
-```
-
-This is equivalent to calling the `rebuild` action on each comic in the directory.
-The performance tip about the temporary directory applies here too.
-
 ### Options
-
-* `--start-chapter <num>`: ignore every chapter before the provided one during encoding (numbers start at 1)
-* `--end-chapter <num>`: ignore every chapter after the provided one during encoding (numbers start at 1)
-* `--dirs-prefix <prefix>`: only consider chapter directories that start by the provided prefix
-* `--create-output-dir`: create the output directory if it does not exist yet
-* `--extended-images-formats`: allow images with exotic formats, that may not be suppored by the vast majority of comics readers
-* `--compress-losslessly`: compress all pictures losslessy - takes quite a bit of time, mostly useless on JPEG/PNG, but useful on BMP images
-* `--silent`: do not display anything, except error messages
 
 You can see additional parameters by calling the related subcommand with `--help`.
 
 ## Installation
 
-Simply clone the project and run `cargo run --release` inside it, or `cargo build --release` to get a standalone executable.
+Simply clone the project and run `cargo install --path .` inside it.

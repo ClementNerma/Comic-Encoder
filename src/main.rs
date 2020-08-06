@@ -3,34 +3,44 @@
 
 #[macro_use] extern crate log;
 
-mod cli;
-mod lib;
+pub mod lib;
+pub mod cli;
+
+mod actions;
 mod logger;
 
-fn main() {
-    use std::time::Instant;
-    use clap::{load_yaml, App};
-    use log::LevelFilter;
-    use cli::error::GlobalError;
+use std::time::Instant;
+use log::LevelFilter;
+use clap::Clap;
+use cli::opts::{Opts, Action, EncodingMethod};
 
+fn main() {
     let started = Instant::now();
 
-    macro_rules! wrap { ($result: expr) => { $result.map_err(|err| format!("{}", err)) } }
-
-    let yaml = load_yaml!("cli/clap.yml");
-    let matches = App::from_yaml(yaml).get_matches();
+    let opts: Opts = Opts::parse();
 
     logger::start(
-        if matches.is_present("silent") { LevelFilter::Error } else if matches.is_present("verbose") { LevelFilter::Debug }
-        else if matches.is_present("debug") { LevelFilter::Trace } else { LevelFilter::Info }
+        if opts.silent { LevelFilter::Error } else if opts.verbose { LevelFilter::Debug }
+        else if opts.debug { LevelFilter::Trace } else { LevelFilter::Info }
     );
 
-    let result = match matches.subcommand() {
-        ("encode", Some(args)) => wrap!(cli::encode::from_args(args)),
-        ("decode", Some(args)) => wrap!(cli::decode::from_args(args)),
-        ("rebuild", Some(args)) => wrap!(cli::rebuild::from_args(args)),
-        ("", _) => wrap!(Err(GlobalError::ActionNameIsMissing)),
-        (cmd, _) => wrap!(Err(GlobalError::UnknownAction(cmd.to_owned())))
+    trace!("Command-line arguments were parsed successfully.");
+
+    let result = match &opts.action {
+        Action::Encode(opts) => match &opts.method {
+            EncodingMethod::Compile(compile_opts) =>
+                actions::compile(compile_opts, &opts.options)
+                    .map_err(|err| format!("{}", err)),
+
+            EncodingMethod::Single(one_opts) =>
+                actions::encode_one(one_opts, &opts.options)
+                    .map(|path| vec![path])
+                    .map_err(|err| format!("{}", err)),
+        },
+
+        Action::Decode(decode) =>
+            actions::decode(decode)
+                .map_err(|err| format!("{}", err))
     };
 
     match result {
