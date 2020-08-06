@@ -45,7 +45,8 @@ pub enum EncodingError {
     FailedToCreateImageFileInZip { volume: usize, chapter: usize, file_path: PathBuf, err: ZipError },
     FailedToReadImage { volume: usize, chapter: usize, chapter_path: PathBuf, image_path: PathBuf, err: IOError },
     FailedToWriteImageFileToZip { volume: usize, chapter: usize, chapter_path: PathBuf, image_path: PathBuf, err: IOError },
-    FailedToCloseZipArchive(usize, ZipError)
+    FailedToCloseZipArchive(usize, ZipError),
+    FailedToRenameCompleteArchive(usize, IOError)
 }
 
 impl fmt::Display for EncodingError {
@@ -145,7 +146,10 @@ impl fmt::Display for EncodingError {
                 ),
 
             Self::FailedToCloseZipArchive(volume, err) =>
-                format!("Failed to close archive for volume {}: {}", volume, err)
+                format!("Failed to close archive for volume {}: {}", volume, err),
+
+            Self::FailedToRenameCompleteArchive(volume, err) =>
+                format!("Failed to rename complete archive for volume {}: {}", volume, err)
         })
     }
 }

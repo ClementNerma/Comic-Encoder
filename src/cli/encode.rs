@@ -32,6 +32,8 @@ pub struct Config<'a> {
     pub output: Option<&'a Path>,
     // Add the start and end chapter at the end of each volume's filename
     pub chapters_suffix: bool,
+    // Add the number of pages at the end of each volume's filename
+    pub volume_pages_suffix: bool,
     /// Create the output directory if it does not exist (or the output file's parent directory)
     pub create_output_dir: bool,
     /// Overwrite existing files instead of failing
@@ -73,12 +75,12 @@ fn build(c: &Config<'_>, is_rebuilding: bool, output: &'_ Path, volume: usize, v
     let build_started = Instant::now();
 
     // Get the file name for this volume
-    let file_name = match c.method {
+    let file_name_without_ext = match c.method {
         Method::Compile(_) => if !c.chapters_suffix || chapters.len() == 0 {
-            format!("Volume-{:0vol_num_len$}.cbz", volume, vol_num_len=vol_num_len)
+            format!("Volume-{:0vol_num_len$}", volume, vol_num_len=vol_num_len)
         } else {
             format!(
-                "Volume-{:0vol_num_len$} (c{:0chapter_num_len$}-c{:0chapter_num_len$}).cbz",
+                "Volume-{:0vol_num_len$} (c{:0chapter_num_len$}-c{:0chapter_num_len$})",
                 volume,
                 start_chapter,
                 start_chapter + chapters.len() - 1,
@@ -89,15 +91,17 @@ fn build(c: &Config<'_>, is_rebuilding: bool, output: &'_ Path, volume: usize, v
 
         Method::Individual => {
             assert_eq!(chapters.len(), 1, "Internal error: individual chapter's volume does contain exactly 1 chapter!");
-            format!("{}.cbz", chapters[0].2)
+            format!("{}", chapters[0].2)
         },
 
         Method::Single => output.file_name().unwrap().to_str().unwrap().to_owned()
     };
 
+    let staging_file_name = format!("{}.cbz.partial", file_name_without_ext);
+
     // Get the path to this volume's future ZIP archive
     let zip_path = match c.method {
-        Method::Compile(_) | Method::Individual => output.join(Path::new(&file_name)),
+        Method::Compile(_) | Method::Individual => output.join(Path::new(&staging_file_name)),
         Method::Single => output.to_path_buf()
     };
 
@@ -141,7 +145,7 @@ fn build(c: &Config<'_>, is_rebuilding: bool, output: &'_ Path, volume: usize, v
     let volume_display_name = match c.method {
         Method::Compile(_) => format!("{:0vol_num_len$}", volume, vol_num_len = vol_num_len),
         Method::Individual => format!("'{}'", display_name_individual.as_ref().unwrap()),
-        Method::Single => format!("'{}'", file_name)
+        Method::Single => format!("'{}'", file_name_without_ext)
     };
 
     // Prepare a buffer to store the picture's files
@@ -272,10 +276,19 @@ fn build(c: &Config<'_>, is_rebuilding: bool, output: &'_ Path, volume: usize, v
     // Close the archive
     zip_writer.finish().map_err(|err| EncodingError::FailedToCloseZipArchive(volume, err))?;
 
+    // Rename the file to its final filename
+    let complete_file_name = format!(
+        "{}{}.cbz",
+        file_name_without_ext,
+        if c.volume_pages_suffix { format!(" ({} pages)", pics_counter) } else { "".to_string() }
+    );
+
+    fs::rename(staging_file_name, &complete_file_name).map_err(|err| EncodingError::FailedToRenameCompleteArchive(volume, err))?;
+
     // Get the eventually truncated file name to display in the success message
-    let success_display_file_name = match file_name.len() {
-        0..=50 => file_name.clone(),
-        _ => format!("{}...", file_name.chars().take(50).collect::<String>())
+    let success_display_file_name = match complete_file_name.len() {
+        0..=50 => complete_file_name.clone(),
+        _ => format!("{}...", complete_file_name.chars().take(50).collect::<String>())
     };
 
     // Compute elapsed time
@@ -562,6 +575,7 @@ pub fn from_args(args: &ArgMatches) -> Result<Vec<PathBuf>, EncodingError> {
         chapters_dir: Path::new(args.value_of("chapters-dir").unwrap()),
         output: args.value_of("output").map(Path::new),
         chapters_suffix: args.is_present("chapters-suffix"),
+        volume_pages_suffix: args.is_present("volumes-pages-suffix"),
         create_output_dir: args.is_present("create-output-dir"),
         overwrite: args.is_present("overwrite"),
         skip_existing: args.is_present("skip-existing"),

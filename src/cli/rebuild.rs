@@ -94,6 +94,7 @@ pub fn rebuild(c: &Config) -> Result<Vec<PathBuf>, RebuildingError> {
         chapters_dir: &tmp_dir_pages,
         output: Some(&output),
         chapters_suffix: false,
+        volume_pages_suffix: false,
         create_output_dir: false,
         overwrite: c.overwrite,
         skip_existing: false,
