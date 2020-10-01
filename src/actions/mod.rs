@@ -1,7 +1,7 @@
 mod compile;
-mod encode_one;
 mod decode;
+mod encode_one;
 
 pub use compile::compile;
-pub use encode_one::encode_one;
 pub use decode::decode;
+pub use encode_one::encode_one;

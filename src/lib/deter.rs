@@ -1,28 +1,40 @@
-use std::ops::{Add, Rem, Div};
-use std::cmp::{PartialEq, Ordering};
-use std::path::{Path, PathBuf};
+use std::cmp::{Ordering, PartialEq};
 use std::fs;
 use std::io;
-use std::str::Chars;
 use std::iter::Peekable;
+use std::ops::{Add, Div, Rem};
+use std::path::{Path, PathBuf};
+use std::str::Chars;
 
 /// Perform a ceiling division of the provided number by the divider
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// assert_eq!(2 / 3, 2);
 /// assert_eq!(ceil_div(2, 3), 3);
 /// ```
-pub fn ceil_div<D: Div<Output=O> + Rem<Output=O> + Copy, O: Add<Output=V> + PartialEq + From<u8>, V>(num: D, divider: D) -> V {
-    num / divider + if num % divider != O::from(0) { O::from(1) } else { O::from(0) }
+pub fn ceil_div<
+    D: Div<Output = O> + Rem<Output = O> + Copy,
+    O: Add<Output = V> + PartialEq + From<u8>,
+    V,
+>(
+    num: D,
+    divider: D,
+) -> V {
+    num / divider
+        + if num % divider != O::from(0) {
+            O::from(1)
+        } else {
+            O::from(0)
+        }
 }
 
 /// Check if a path has a common image format extension
 /// Additional formats that may not be widely supported can be accepted using the `extended` parameter
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// assert_eq!(has_image_ext(Path::new("file.png"), false), true);
 /// assert_eq!(has_image_ext(Path::new("file.Jpeg"), false), true);
@@ -39,20 +51,20 @@ pub fn has_image_ext(path: impl AsRef<Path>, extended: bool) -> bool {
             Some(ext) => match ext.to_lowercase().as_str() {
                 "jpg" | "jpeg" | "png" | "bmp" => true,
 
-                "tif" | "tiff" | "gif" | "eps" | "raw" | "cr2" | "nef"  | "orf" | "sr2" |
-                "ppm" | "webp" | "pgm" | "pbm" | "pnm" | "ico" | "flif" | "pam" | "pcx" |
-                "pgf" | "sgi"  | "sid" | "bgp" => extended,
+                "tif" | "tiff" | "gif" | "eps" | "raw" | "cr2" | "nef" | "orf" | "sr2" | "ppm"
+                | "webp" | "pgm" | "pbm" | "pnm" | "ico" | "flif" | "pam" | "pcx" | "pgf"
+                | "sgi" | "sid" | "bgp" => extended,
 
-                _ => false
-            }
-        }
+                _ => false,
+            },
+        },
     }
 }
 
 /// Check if a comic format is supported for decoding
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// assert_eq!(is_supported_for_decoding("zip"), true);
 /// assert_eq!(is_supported_for_decoding("PdF"), true);
@@ -70,7 +82,7 @@ pub fn is_supported_for_decoding(ext: &str) -> bool {
         "pdf" => true,
 
         // Every other format is not supported
-        _ => false
+        _ => false,
     }
 }
 
@@ -92,32 +104,32 @@ fn take_num(chars: &mut Peekable<Chars>) -> Vec<u8> {
                 if num != 0 || digits.len() != 0 {
                     digits.push(code as u8 - 0x30);
                 }
-            },
+            }
 
-            _ => break
+            _ => break,
         }
     }
-    
+
     digits
 }
 
 /// Compare two strings using natural order, which is equivalent to traditional UTF-8 sorting \
 /// but compares whole numbers instead of single digits
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// let mut directories = vec![ "Folder 20", "Folder 1", "Folder 100" ];
-/// 
+///
 /// // Native sort
 /// directories.sort();
 /// println!("{:?}", directories); // ["Folder 1", "Folder 100", "Folder 20"]
-/// 
+///
 /// // Natural sort
 /// directories.sort_by(natural_cmp);
 /// println!("{:?}", directories); // ["Folder 1", "Folder 20", "Folder 100"]
 /// ```
-/// 
+///
 pub fn natural_cmp(left: &str, right: &str) -> Ordering {
     let left = left.to_lowercase();
     let right = right.to_lowercase();
@@ -140,7 +152,7 @@ pub fn natural_cmp(left: &str, right: &str) -> Ordering {
 
                     for (ldig, rdig) in lnum.iter().zip(rnum.iter()) {
                         let cmp = ldig.cmp(rdig);
-                        
+
                         if cmp != Ordering::Equal {
                             return cmp;
                         }
@@ -153,31 +165,36 @@ pub fn natural_cmp(left: &str, right: &str) -> Ordering {
 
                     match lc.cmp(&rc) {
                         Ordering::Equal => continue,
-                        ordering @ _ => ordering
+                        ordering @ _ => ordering,
                     }
                 }
-            },
+            }
             (Some(_), None) => Ordering::Greater,
             (None, Some(_)) => Ordering::Less,
-            (None, None) => Ordering::Equal
-        }
+            (None, None) => Ordering::Equal,
+        };
     }
 }
 
 /// Read a directory's files, recursively
 /// Files list comes in the provided fs::read_dir() order, which means there is no guarantee it is sorted in any way
 /// Absolute paths to the files is returned as a vector
-pub fn readdir_files_recursive<F: Fn(&PathBuf) -> bool>(dir: impl AsRef<Path>, filter: Option<&F>) -> Result<Vec<PathBuf>, io::Error> {
+pub fn readdir_files_recursive<F: Fn(&PathBuf) -> bool>(
+    dir: impl AsRef<Path>,
+    filter: Option<&F>,
+) -> Result<Vec<PathBuf>, RecursiveFilesSearchErr> {
     let mut files = vec![];
 
-    for entry in fs::read_dir(dir.as_ref())? {
-        let path = entry?.path();
+    for entry in fs::read_dir(dir.as_ref()).map_err(RecursiveFilesSearchErr::IOError)? {
+        let path = entry.map_err(RecursiveFilesSearchErr::IOError)?.path();
+
+        if !path.exists() {
+            return Err(RecursiveFilesSearchErr::InvalidFileName(path.to_path_buf()));
+        }
 
         if path.is_dir() {
             files.extend_from_slice(&readdir_files_recursive(&path, filter)?);
-        }
-
-        else if path.is_file() {
+        } else if path.is_file() {
             if filter.map(|filter| filter(&path)).unwrap_or(true) {
                 files.push(path);
             }
@@ -195,13 +212,22 @@ pub fn natural_paths_cmp(a: &PathBuf, b: &PathBuf) -> Ordering {
 
     loop {
         return match (a.next(), b.next()) {
-            (Some(a_cp), Some(b_cp)) => match natural_cmp(&a_cp.as_os_str().to_string_lossy(), &b_cp.as_os_str().to_string_lossy()) {
+            (Some(a_cp), Some(b_cp)) => match natural_cmp(
+                &a_cp.as_os_str().to_string_lossy(),
+                &b_cp.as_os_str().to_string_lossy(),
+            ) {
                 Ordering::Equal => continue,
-                ordering @ _ => ordering
+                ordering @ _ => ordering,
             },
             (Some(_), None) => Ordering::Greater,
             (None, Some(_)) => Ordering::Less,
             (None, None) => Ordering::Equal,
-        }
+        };
     }
+}
+
+/// Recursive files search error
+pub enum RecursiveFilesSearchErr {
+    IOError(io::Error),
+    InvalidFileName(PathBuf),
 }

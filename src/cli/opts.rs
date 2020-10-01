@@ -1,5 +1,5 @@
+use clap::{crate_authors, crate_description, crate_version, Clap};
 use std::path::PathBuf;
-use clap::{Clap, crate_version, crate_authors, crate_description};
 
 #[derive(Clap, Debug)]
 #[clap(
@@ -7,25 +7,41 @@ use clap::{Clap, crate_version, crate_authors, crate_description};
 )]
 pub struct Opts {
     /// Do not display any message other than errors
-    #[clap(global = true, long="silent", conflicts_with="verbose", conflicts_with="debug")]
+    #[clap(
+        global = true,
+        long = "silent",
+        conflicts_with = "verbose",
+        conflicts_with = "debug"
+    )]
     pub silent: bool,
 
     /// Display detailed informations
-    #[clap(global = true, long="verbose", short, conflicts_with="silent", conflicts_with="debug")]
+    #[clap(
+        global = true,
+        long = "verbose",
+        short,
+        conflicts_with = "silent",
+        conflicts_with = "debug"
+    )]
     pub verbose: bool,
 
     /// Display extremely detailed informations
-    #[clap(global = true, long="debug", conflicts_with="silent", conflicts_with="verbose")]
+    #[clap(
+        global = true,
+        long = "debug",
+        conflicts_with = "silent",
+        conflicts_with = "verbose"
+    )]
     pub debug: bool,
 
     #[clap(subcommand)]
-    pub action: Action
+    pub action: Action,
 }
 
 #[derive(Clap, Debug)]
 pub enum Action {
     Encode(Encode),
-    Decode(Decode)
+    Decode(Decode),
 }
 
 #[derive(Clap, Debug)]
@@ -35,14 +51,14 @@ pub struct Encode {
     pub method: EncodingMethod,
 
     #[clap(flatten)]
-    pub options: EncodingOptions
+    pub options: EncodingOptions,
 }
 
 #[derive(Clap, Debug)]
 /// Encode directories to volumes
 pub enum EncodingMethod {
     Compile(CompilationOptions),
-    Single(EncodeSingle)
+    Single(EncodeSingle),
 }
 
 #[derive(Clap, Debug)]
@@ -73,7 +89,7 @@ pub struct EncodingOptions {
 
     /// Compress losslessly (a lot slower, save up about 5% of the final volumes' size)
     #[clap(global = true, long)]
-    pub compress_losslessly: bool
+    pub compress_losslessly: bool,
 }
 
 #[derive(Clap, Debug)]
@@ -96,13 +112,13 @@ pub struct CompilationOptions {
 
     /// End at a specific chapter/volume (ignore every chapter after this one)
     #[clap(global = true, long)]
-    pub end_chapter: Option<usize>
+    pub end_chapter: Option<usize>,
 }
 
 #[derive(Clap, Debug)]
 pub enum CompilationMethod {
     Ranges(CompileRanges),
-    Each(CompileEach)
+    Each(CompileEach),
 }
 
 #[derive(Clap, Debug)]
@@ -117,19 +133,19 @@ pub struct CompileRanges {
 
     /// Show path for each chapter put in a volume
     #[clap(global = true, long)]
-    pub debug_chapters_path: bool
+    pub debug_chapters_path: bool,
 }
 
 #[derive(Clap, Debug)]
 /// Compile directories to individual volumes
 pub struct CompileEach {
     /// Skip output chapter files that already exist
-    #[clap(global = true, long, conflicts_with="append_pages_count")]
+    #[clap(global = true, long, conflicts_with = "append_pages_count")]
     pub skip_existing: bool,
 
     /// Display full file names (by default names are truncated above 50 characters)
     #[clap(global = true, long)]
-    pub display_full_names: bool
+    pub display_full_names: bool,
 }
 
 #[derive(Clap, Debug)]
@@ -156,7 +172,7 @@ pub struct Decode {
     pub extract_images_only: bool,
 
     /// When using '--extract-images-only', extract additional image formats that may not be supported by all readers (e.g. TIF / RAW / CR2 / ... files)
-    #[clap(global = true, short, long, requires="extract-images-only")]
+    #[clap(global = true, short, long, requires = "extract-images-only")]
     pub accept_extended_image_formats: bool,
 
     /// Disable natural sorting (use default UTF-8 sorting, a bit faster but unintuitive)
@@ -165,5 +181,5 @@ pub struct Decode {
 
     /// Continue extraction even if some pages cannot be extracted from the input PDF (only if input file is PDF)
     #[clap(global = true, long)]
-    pub skip_bad_pdf_pages: bool
+    pub skip_bad_pdf_pages: bool,
 }

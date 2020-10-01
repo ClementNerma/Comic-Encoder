@@ -1,6 +1,6 @@
+use fern::colors::{Color, ColoredLevelConfig};
+use log::{Level, LevelFilter};
 use std::time::Instant;
-use fern::colors::{ColoredLevelConfig, Color};
-use log::{LevelFilter, Level};
 
 /// Start the logger, hiding every message whose level is under the provided one
 pub fn start(level: LevelFilter) {
@@ -23,7 +23,10 @@ pub fn start(level: LevelFilter) {
 
             out.finish(format_args!(
                 "{}[{: >2}m {: >2}.{:03}s] {}: {}\x1B[0m",
-                format_args!("\x1B[{}m", colors_line.get_color(&record.level()).to_fg_str()),
+                format_args!(
+                    "\x1B[{}m",
+                    colors_line.get_color(&record.level()).to_fg_str()
+                ),
                 secs / 60,
                 secs % 60,
                 elapsed.subsec_millis(),
@@ -32,7 +35,7 @@ pub fn start(level: LevelFilter) {
                     Level::Warn => "WARNING",
                     Level::Error => "ERROR",
                     Level::Debug => "VERBOSE",
-                    Level::Trace => "DEBUG"
+                    Level::Trace => "DEBUG",
                 },
                 message
             ))

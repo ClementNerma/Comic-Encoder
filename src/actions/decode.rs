@@ -1,19 +1,21 @@
-use std::path::{Path, PathBuf};
+use crate::cli::error::DecodingError;
+use crate::cli::opts::Decode;
+use crate::lib::deter;
+use pdf::file::File as PDFFile;
+use pdf::object::XObject;
 use std::env;
 use std::fs::{self, File};
 use std::io;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 use zip::ZipArchive;
-use pdf::file::File as PDFFile;
-use pdf::object::XObject;
-use crate::lib::deter;
-use crate::cli::error::DecodingError;
-use crate::cli::opts::Decode;
 
 /// Perform a decoding using the provided configuration object
 pub fn decode(dec: &Decode) -> Result<Vec<PathBuf>, DecodingError> {
     // Get absolute path to the input for path manipulation
-    let input = env::current_dir().map_err(DecodingError::FailedToGetCWD)?.join(&dec.input);
+    let input = env::current_dir()
+        .map_err(DecodingError::FailedToGetCWD)?
+        .join(&dec.input);
 
     // Check if the input file exists
     if !input.exists() {
@@ -27,7 +29,8 @@ pub fn decode(dec: &Decode) -> Result<Vec<PathBuf>, DecodingError> {
         Some(output) => {
             if !output.exists() {
                 if dec.create_output_dir {
-                    fs::create_dir_all(output).map_err(DecodingError::FailedToCreateOutputDirectory)?
+                    fs::create_dir_all(output)
+                        .map_err(DecodingError::FailedToCreateOutputDirectory)?
                 } else {
                     Err(DecodingError::OutputDirectoryNotFound)?
                 }
@@ -36,7 +39,7 @@ pub fn decode(dec: &Decode) -> Result<Vec<PathBuf>, DecodingError> {
             }
 
             output.to_owned()
-        },
+        }
 
         None => {
             let path = input.with_extension("").to_owned();
@@ -46,8 +49,14 @@ pub fn decode(dec: &Decode) -> Result<Vec<PathBuf>, DecodingError> {
     };
 
     // Get the input file's extension to determine its format
-    let ext = input.extension().ok_or(DecodingError::UnsupportedFormat(String::new()))?;
-    let ext = ext.to_str().ok_or(DecodingError::InputFileHasInvalidUTF8FileExtension(input.file_name().unwrap().to_os_string()))?;
+    let ext = input
+        .extension()
+        .ok_or(DecodingError::UnsupportedFormat(String::new()))?;
+    let ext = ext
+        .to_str()
+        .ok_or(DecodingError::InputFileHasInvalidUTF8FileExtension(
+            input.file_name().unwrap().to_os_string(),
+        ))?;
 
     // Get timestamp to measure decoding time
     let extraction_started = Instant::now();
@@ -70,7 +79,7 @@ pub fn decode(dec: &Decode) -> Result<Vec<PathBuf>, DecodingError> {
             struct ExtractedFile {
                 path_in_zip: PathBuf,
                 extracted_path: PathBuf,
-                extension: Option<String>
+                extension: Option<String>,
             }
 
             // List of extracted pages
@@ -87,32 +96,46 @@ pub fn decode(dec: &Decode) -> Result<Vec<PathBuf>, DecodingError> {
                     let file_name = file.sanitized_name();
 
                     // Ensure the file is an image if only images have to be extracted
-                    if dec.extract_images_only && !deter::has_image_ext(&file_name, dec.accept_extended_image_formats) {
+                    if dec.extract_images_only
+                        && !deter::has_image_ext(&file_name, dec.accept_extended_image_formats)
+                    {
                         trace!("Ignoring file {}/{} based on extension", i + 1, zip_files);
-                        continue ;
+                        continue;
                     }
 
                     // Get the file's extension to determine output file's name
-                    let ext = file_name.extension()
-                        .map(|ext| ext.to_str().ok_or(DecodingError::ZipFileHasInvalidUTF8FileExtension(file_name.clone())))
+                    let ext = file_name
+                        .extension()
+                        .map(|ext| {
+                            ext.to_str()
+                                .ok_or(DecodingError::ZipFileHasInvalidUTF8FileExtension(
+                                    file_name.clone(),
+                                ))
+                        })
                         .transpose()?;
 
                     let outpath = output.join(Path::new(&format!("___tmp_pic_{}", pages.len())));
 
                     // Create output file
                     trace!("File is a page. Creating an output file for it...");
-                    let mut outfile = File::create(&outpath).map_err(|err| DecodingError::FailedToCreateOutputFile(err, outpath.clone()))?;
+                    let mut outfile = File::create(&outpath).map_err(|err| {
+                        DecodingError::FailedToCreateOutputFile(err, outpath.clone())
+                    })?;
 
                     // Extract the page
                     debug!("Extracting file {} out of {}...", i + 1, zip_files);
-                    io::copy(&mut file, &mut outfile).map_err(|err| DecodingError::FailedToExtractZipFile {
-                        path_in_zip: file_name.clone(), extract_to: outpath.clone(), err
+                    io::copy(&mut file, &mut outfile).map_err(|err| {
+                        DecodingError::FailedToExtractZipFile {
+                            path_in_zip: file_name.clone(),
+                            extract_to: outpath.clone(),
+                            err,
+                        }
                     })?;
 
                     pages.push(ExtractedFile {
                         extension: ext.map(|ext| ext.to_owned()),
                         path_in_zip: file_name,
-                        extracted_path: outpath
+                        extracted_path: outpath,
                     });
                 }
             }
@@ -136,21 +159,30 @@ pub fn decode(dec: &Decode) -> Result<Vec<PathBuf>, DecodingError> {
 
             for (i, page) in pages.into_iter().enumerate() {
                 let target = output.join(&match page.extension {
-                    None => format!("{:0page_num_len$}", i + 1, page_num_len=page_num_len),
-                    Some(ref ext) => format!("{:0page_num_len$}.{}", i + 1, ext, page_num_len=page_num_len)
+                    None => format!("{:0page_num_len$}", i + 1, page_num_len = page_num_len),
+                    Some(ref ext) => format!(
+                        "{:0page_num_len$}.{}",
+                        i + 1,
+                        ext,
+                        page_num_len = page_num_len
+                    ),
                 });
 
                 trace!("Renaming picture {}/{}...", i + 1, total_pages);
 
-                fs::rename(&page.extracted_path, &target).map_err(|err| DecodingError::FailedToRenameTemporaryFile {
-                    from: page.extracted_path, to: target.to_owned(), err
+                fs::rename(&page.extracted_path, &target).map_err(|err| {
+                    DecodingError::FailedToRenameTemporaryFile {
+                        from: page.extracted_path,
+                        to: target.to_owned(),
+                        err,
+                    }
                 })?;
 
                 extracted.push(target);
             }
 
             Ok(extracted)
-        },
+        }
 
         "pdf" => {
             debug!("Matched input format: PDF");
@@ -169,16 +201,19 @@ pub fn decode(dec: &Decode) -> Result<Vec<PathBuf>, DecodingError> {
                 match page.map_err(|err| DecodingError::FailedToGetPdfPage(i + 1, err)) {
                     Err(err) if dec.skip_bad_pdf_pages => warn!("{}", err),
                     Err(err) => return Err(err),
-                    Ok(page) => match page.resources(&pdf).map_err(|err| DecodingError::FailedToGetPdfPageResources(i + 1, err)) {
+                    Ok(page) => match page
+                        .resources(&pdf)
+                        .map_err(|err| DecodingError::FailedToGetPdfPageResources(i + 1, err))
+                    {
                         Err(err) if dec.skip_bad_pdf_pages => warn!("{}", err),
                         Err(err) => return Err(err),
                         Ok(resources) => {
                             images.extend(resources.xobjects.iter().filter_map(|(_, o)| match o {
                                 XObject::Image(im) => Some(im.clone()),
-                                _ => None
+                                _ => None,
                             }));
                         }
-                    }
+                    },
                 }
             }
 
@@ -189,17 +224,23 @@ pub fn decode(dec: &Decode) -> Result<Vec<PathBuf>, DecodingError> {
 
             // Extract all images from the PDF
             for (i, image) in images.iter().enumerate() {
-                let outpath = output.join(Path::new(&format!("{:0page_num_len$}.jpg", i + 1, page_num_len=page_num_len)));
+                let outpath = output.join(Path::new(&format!(
+                    "{:0page_num_len$}.jpg",
+                    i + 1,
+                    page_num_len = page_num_len
+                )));
 
                 debug!("Extracting page {}/{}...", i + 1, images.len());
 
-                fs::write(&outpath, image.as_jpeg().unwrap()).map_err(|err| DecodingError::FailedToExtractPdfImage(i + 1, outpath.clone(), err))?;
+                fs::write(&outpath, image.as_jpeg().unwrap()).map_err(|err| {
+                    DecodingError::FailedToExtractPdfImage(i + 1, outpath.clone(), err)
+                })?;
 
                 extracted.push(outpath);
             }
 
             Ok(extracted)
-        },
+        }
 
         _ => {
             if deter::is_supported_for_decoding(ext) {
@@ -212,7 +253,12 @@ pub fn decode(dec: &Decode) -> Result<Vec<PathBuf>, DecodingError> {
 
     if let Ok(pages) = &result {
         let elapsed = extraction_started.elapsed();
-        info!("Successfully extracted {} pages in {}.{:03} s!", pages.len(), elapsed.as_secs(), elapsed.subsec_millis());
+        info!(
+            "Successfully extracted {} pages in {}.{:03} s!",
+            pages.len(),
+            elapsed.as_secs(),
+            elapsed.subsec_millis()
+        );
     }
 
     result

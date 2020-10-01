@@ -24,11 +24,12 @@ pub enum EncodingError {
     FailedToCreateOutputDirectory(IOError),
     FailedToReadChaptersDirectory(IOError),
     ItemHasInvalidUTF8Name(OsString),
-    FailedToCreateVolumeFile(usize, IOError),
+    FailedToCreateVolumeFile(usize, PathBuf, IOError),
     OutputVolumeFileAlreadyExists(usize, PathBuf),
     OutputVolumeFileIsADirectory(usize, PathBuf),
     FailedToOverwriteOutputVolumeFile(usize, PathBuf, IOError),
     FailedToListChapterDirectoryFiles { volume: usize, chapter: usize, chapter_path: PathBuf, err: IOError },
+    FoundItemWithInvalidName { volume: usize, chapter: usize, chapter_path: PathBuf, invalid_item_path: PathBuf },
     FailedToOpenImage { volume: usize, chapter: usize, chapter_path: PathBuf, image_path: PathBuf, err: IOError },
     FailedToCreateChapterDirectoryInZip { volume: usize, chapter: usize, dir_name: String, err: ZipError },
     FailedToCreateImageFileInZip { volume: usize, chapter: usize, file_path: PathBuf, err: ZipError },
@@ -92,8 +93,8 @@ impl fmt::Display for EncodingError {
             Self::ItemHasInvalidUTF8Name(path) =>
                 format!("A file or directory has not a valid UTF-8 name in the input directory: {}", path.to_string_lossy()),
             
-            Self::FailedToCreateVolumeFile(volume, err) =>
-                format!("Failed to create the file of volume {}: {}", volume, err),
+            Self::FailedToCreateVolumeFile(volume, path, err) =>
+                format!("Failed to create the file of volume {} at path '{}': {}", volume, path.to_string_lossy(), err),
             
             Self::OutputVolumeFileAlreadyExists(volume, path) =>
                 format!("Failed to create the file of volume {} because path '{}' already exists (use '--overwrite' to force writing)", volume, path.to_string_lossy()),
@@ -111,6 +112,18 @@ impl fmt::Display for EncodingError {
                     volume,
                     chapter_path.to_string_lossy(),
                     err
+                ),
+
+            Self::FoundItemWithInvalidName { volume, chapter, chapter_path, invalid_item_path } =>
+                format!(
+                    "Found item with invalid filename for chapter {} in volume {} at '{}': {}",
+                    chapter,
+                    volume,
+                    chapter_path.to_string_lossy(),
+                    match invalid_item_path.file_name() {
+                        None => "<unknown filename>".to_string(),
+                        Some(file_name) => file_name.to_string_lossy().to_string()
+                    }
                 ),
             
             Self::FailedToOpenImage { volume, chapter, chapter_path: _, image_path, err } =>
