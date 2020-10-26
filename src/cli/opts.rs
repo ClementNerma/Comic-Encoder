@@ -92,7 +92,7 @@ pub struct EncodingOptions {
     pub compress_losslessly: bool,
 }
 
-#[derive(Clap, Debug)]
+#[derive(Clap, Debug, Clone)]
 /// Compile chapter directories into volumes
 pub struct CompilationOptions {
     #[clap(subcommand)]
@@ -115,13 +115,13 @@ pub struct CompilationOptions {
     pub end_chapter: Option<usize>,
 }
 
-#[derive(Clap, Debug)]
+#[derive(Clap, Debug, Clone, Copy)]
 pub enum CompilationMethod {
     Ranges(CompileRanges),
     Each(CompileEach),
 }
 
-#[derive(Clap, Debug)]
+#[derive(Clap, Debug, Clone, Copy)]
 /// Compile multiple chapters in single volumes (e.g. compile 10 to compile 10 chapters per volume)
 pub struct CompileRanges {
     #[clap(global = true, about = "Number of chapters per volume")]
@@ -136,7 +136,7 @@ pub struct CompileRanges {
     pub debug_chapters_path: bool,
 }
 
-#[derive(Clap, Debug)]
+#[derive(Clap, Debug, Clone, Copy)]
 /// Compile directories to individual volumes
 pub struct CompileEach {
     /// Skip output chapter files that already exist
@@ -148,11 +148,11 @@ pub struct CompileEach {
     pub display_full_names: bool,
 }
 
-#[derive(Clap, Debug)]
+#[derive(Clap, Debug, Clone, Copy)]
 /// Encode a single directory as a single volume
 pub struct EncodeSingle {}
 
-#[derive(Clap, Debug)]
+#[derive(Clap, Debug, Clone)]
 /// Extract images from an existing comic book
 pub struct Decode {
     /// The comic book to decode

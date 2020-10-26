@@ -1,38 +1,41 @@
+use crate::cli::error::EncodingError;
+use crate::cli::opts::{CompilationMethod, CompilationOptions, EncodingOptions};
+use crate::lib::build_vol::*;
+use crate::lib::deter;
+use std::env;
 use std::fs;
 use std::path::PathBuf;
-use std::env;
-use crate::lib::deter;
-use crate::cli::error::EncodingError;
-use crate::cli::opts::{EncodingOptions, CompilationOptions, CompilationMethod};
-use crate::lib::build_vol::*;
 
 /// Compile directories to volumes
-pub fn compile(opts: &CompilationOptions, enc_opts: &EncodingOptions) -> Result<Vec<PathBuf>, EncodingError> {
+pub fn compile(
+    opts: &CompilationOptions,
+    enc_opts: &EncodingOptions,
+) -> Result<Vec<PathBuf>, EncodingError> {
     // Get the number of chapters to put in each volume
     let chap_per_vol = match &opts.method {
         CompilationMethod::Ranges(opts) => opts.chapters_per_volume,
-        CompilationMethod::Each(_) => 1
+        CompilationMethod::Each(_) => 1,
     };
 
     if chap_per_vol == 0 {
-        Err(EncodingError::AtLeast1ChapterPerVolume)?
+        return Err(EncodingError::AtLeast1ChapterPerVolume);
     }
 
     if let Some(start_chapter) = opts.start_chapter {
         if start_chapter == 0 {
-            Err(EncodingError::InvalidStartChapter)?
+            return Err(EncodingError::InvalidStartChapter);
         }
     }
 
     if let Some(end_chapter) = opts.end_chapter {
         if end_chapter == 0 {
-            Err(EncodingError::InvalidEndChapter)?
+            return Err(EncodingError::InvalidEndChapter);
         }
     }
 
     if let (Some(start_chapter), Some(end_chapter)) = (opts.start_chapter, opts.end_chapter) {
         if end_chapter < start_chapter {
-            Err(EncodingError::StartChapterCannotBeHigherThanEndChapter)?
+            return Err(EncodingError::StartChapterCannotBeHigherThanEndChapter);
         }
     }
 
@@ -42,7 +45,7 @@ pub fn compile(opts: &CompilationOptions, enc_opts: &EncodingOptions) -> Result<
     let input_dir = cwd.join(&enc_opts.input);
 
     if !input_dir.is_dir() {
-        Err(EncodingError::ChaptersDirectoryNotFound)?
+        return Err(EncodingError::ChaptersDirectoryNotFound);
     }
 
     // Create the output directory if needed, and get the output path
@@ -52,17 +55,18 @@ pub fn compile(opts: &CompilationOptions, enc_opts: &EncodingOptions) -> Result<
 
             if !output.is_dir() {
                 if opts.create_output_dir {
-                    fs::create_dir_all(&output).map_err(EncodingError::FailedToCreateOutputDirectory)?
+                    fs::create_dir_all(&output)
+                        .map_err(EncodingError::FailedToCreateOutputDirectory)?
                 } else {
-                    Err(EncodingError::OutputDirectoryNotFound)?
+                    return Err(EncodingError::OutputDirectoryNotFound);
                 }
             }
 
             output
-        },
+        }
 
         // Output directory = input directory
-        None => input_dir.to_path_buf()
+        None => input_dir.clone(),
     };
 
     // List of chapter directories
@@ -77,10 +81,18 @@ pub fn compile(opts: &CompilationOptions, enc_opts: &EncodingOptions) -> Result<
 
         // Ignore files
         if path.is_dir() {
-            let entry_name = entry.file_name().into_string().map_err(|_| EncodingError::ItemHasInvalidUTF8Name(entry.file_name()))?;
+            let entry_name = entry
+                .file_name()
+                .into_string()
+                .map_err(|_| EncodingError::ItemHasInvalidUTF8Name(entry.file_name()))?;
 
             // Ignore directories not starting by the provided prefix
-            if opts.dirs_prefix.as_ref().map(|prefix| entry_name.starts_with(prefix)).unwrap_or(true) {
+            if opts
+                .dirs_prefix
+                .as_ref()
+                .map(|prefix| entry_name.starts_with(prefix))
+                .unwrap_or(true)
+            {
                 chapter_dirs.push((path, entry_name));
             }
         }
@@ -149,20 +161,35 @@ pub fn compile(opts: &CompilationOptions, enc_opts: &EncodingOptions) -> Result<
     // Generate the build method
     let build_method = match &opts.method {
         CompilationMethod::Ranges(sub_opts) => BuildMethod::Ranges(sub_opts, opts),
-        CompilationMethod::Each(sub_opts) => BuildMethod::Each(sub_opts, opts)
+        CompilationMethod::Each(sub_opts) => BuildMethod::Each(sub_opts, opts),
     };
 
     // The list of all created volume files
     let mut output_files = vec![];
 
     // Iterate over chapters
-    for (chapter, (path, chapter_name)) in chapter_dirs.into_iter().skip(start_chapter).take(chapter_len).enumerate() {
+    for (chapter, (path, chapter_name)) in chapter_dirs
+        .into_iter()
+        .skip(start_chapter)
+        .take(chapter_len)
+        .enumerate()
+    {
         // Add this chapter to the current volume
         volume_chapters.push((chapter + 1, path, chapter_name));
 
         // If this volume contains enough chapters, build it
         if volume_chapters.len() == chap_per_vol.into() {
-            output_files.push(build_volume(&build_method, enc_opts, &output, volume, volumes, vol_num_len, chapter_num_len, volume_start_chapter, &volume_chapters)?);
+            output_files.push(build_volume(&BuildVolumeArgs {
+                method: &build_method,
+                enc_opts,
+                output: &output,
+                volume,
+                volumes,
+                vol_num_len,
+                chapter_num_len,
+                start_chapter: volume_start_chapter,
+                chapters: &volume_chapters,
+            })?);
             volume_start_chapter += volume_chapters.len();
             volume_chapters = vec![];
             volume += 1;
@@ -170,11 +197,25 @@ pub fn compile(opts: &CompilationOptions, enc_opts: &EncodingOptions) -> Result<
     }
 
     // If there are remaining chapters, build a last volume with them
-    if volume_chapters.len() != 0 {
-        output_files.push(build_volume(&build_method, enc_opts, &output, volume, volumes, vol_num_len, chapter_num_len, volume_start_chapter, &volume_chapters)?);
+    if volume_chapters.is_empty() {
+        output_files.push(build_volume(&BuildVolumeArgs {
+            method: &build_method,
+            enc_opts,
+            output: &output,
+            volume,
+            volumes,
+            vol_num_len,
+            chapter_num_len,
+            start_chapter: volume_start_chapter,
+            chapters: &volume_chapters,
+        })?);
     }
 
-    info!("Successfully built {} volume{}.", output_files.len(), if output_files.len() > 1 { "s" } else { "" });
+    info!(
+        "Successfully built {} volume{}.",
+        output_files.len(),
+        if output_files.len() > 1 { "s" } else { "" }
+    );
 
     Ok(output_files)
 }

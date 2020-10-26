@@ -19,9 +19,9 @@ pub fn decode(dec: &Decode) -> Result<Vec<PathBuf>, DecodingError> {
 
     // Check if the input file exists
     if !input.exists() {
-        Err(DecodingError::InputFileNotFound)?
+        return Err(DecodingError::InputFileNotFound);
     } else if !input.is_file() {
-        Err(DecodingError::InputFileIsADirectory)?
+        return Err(DecodingError::InputFileIsADirectory);
     }
 
     // Create the output directory if needed, and get the output path
@@ -32,17 +32,17 @@ pub fn decode(dec: &Decode) -> Result<Vec<PathBuf>, DecodingError> {
                     fs::create_dir_all(output)
                         .map_err(DecodingError::FailedToCreateOutputDirectory)?
                 } else {
-                    Err(DecodingError::OutputDirectoryNotFound)?
+                    return Err(DecodingError::OutputDirectoryNotFound);
                 }
             } else if !output.is_dir() {
-                Err(DecodingError::OutputDirectoryIsAFile)?
+                return Err(DecodingError::OutputDirectoryIsAFile);
             }
 
             output.to_owned()
         }
 
         None => {
-            let path = input.with_extension("").to_owned();
+            let path = input.with_extension("");
             fs::create_dir_all(&path).map_err(DecodingError::FailedToCreateOutputDirectory)?;
             path
         }
@@ -51,10 +51,11 @@ pub fn decode(dec: &Decode) -> Result<Vec<PathBuf>, DecodingError> {
     // Get the input file's extension to determine its format
     let ext = input
         .extension()
-        .ok_or(DecodingError::UnsupportedFormat(String::new()))?;
+        .ok_or_else(|| DecodingError::UnsupportedFormat(String::new()))?;
+
     let ext = ext
         .to_str()
-        .ok_or(DecodingError::InputFileHasInvalidUTF8FileExtension(
+        .ok_or_else(|| DecodingError::InputFileHasInvalidUTF8FileExtension(
             input.file_name().unwrap().to_os_string(),
         ))?;
 
@@ -108,7 +109,7 @@ pub fn decode(dec: &Decode) -> Result<Vec<PathBuf>, DecodingError> {
                         .extension()
                         .map(|ext| {
                             ext.to_str()
-                                .ok_or(DecodingError::ZipFileHasInvalidUTF8FileExtension(
+                                .ok_or_else(|| DecodingError::ZipFileHasInvalidUTF8FileExtension(
                                     file_name.clone(),
                                 ))
                         })

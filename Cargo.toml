@@ -1,6 +1,6 @@
 [package]
 name = "comic-encoder"
-version = "2.1.0"
+version = "2.1.1"
 authors = ["Clément Nerma <clement.nerma@gmail.com>"]
 description = "Software for building and extracting comic archives"
 edition = "2018"

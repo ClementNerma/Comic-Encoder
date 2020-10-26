@@ -8,11 +8,24 @@ use std::time::Instant;
 use zip::write::{FileOptions, ZipWriter};
 use zip::CompressionMethod;
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum BuildMethod<'a> {
     Ranges(&'a CompileRanges, &'a CompilationOptions),
     Each(&'a CompileEach, &'a CompilationOptions),
     Single(&'a EncodeSingle),
+}
+
+#[derive(Debug)]
+pub struct BuildVolumeArgs<'a> {
+    pub method: &'a BuildMethod<'a>,
+    pub enc_opts: &'a EncodingOptions,
+    pub output: &'a PathBuf,
+    pub volume: usize,
+    pub volumes: usize,
+    pub vol_num_len: usize,
+    pub chapter_num_len: usize,
+    pub start_chapter: usize,
+    pub chapters: &'a Vec<(usize, PathBuf, String)>,
 }
 
 /// Build a volume
@@ -23,26 +36,29 @@ pub enum BuildMethod<'a> {
 /// `chapter_num_len` is like `vol_num_len` but for chapters
 /// `start_chapter` is the number of the first chapter in this volume
 /// `chapters` is a list of the chapters this volume contains. It's a vector of tuples containing: (chapter number, path to the chapter's directory, chapter's directory's file name)
-pub fn build_volume(
-    method: &'_ BuildMethod,
-    enc_opts: &'_ EncodingOptions,
-    output: &'_ Path,
-    volume: usize,
-    volumes: usize,
-    vol_num_len: usize,
-    chapter_num_len: usize,
-    start_chapter: usize,
-    chapters: impl AsRef<[(usize, PathBuf, String)]>,
-) -> Result<PathBuf, EncodingError> {
+pub fn build_volume(args: &BuildVolumeArgs) -> Result<PathBuf, EncodingError> {
+    let BuildVolumeArgs {
+        method,
+        enc_opts,
+        output,
+        volume,
+        volumes,
+        vol_num_len,
+        chapter_num_len,
+        start_chapter,
+        chapters,
+    } = args;
+
+    // Dereference volume number to a simple 'usize'
+    let volume = *volume;
+
     // Get timestamp to measure performance
     let build_started = Instant::now();
-
-    let chapters = chapters.as_ref();
 
     // Get the file name for this volume
     let output_path_without_ext = match method {
         BuildMethod::Ranges(opts, _) => {
-            if !opts.append_chapters_range || chapters.len() == 0 {
+            if !opts.append_chapters_range || chapters.is_empty() {
                 output.join(format!(
                     "Volume-{:0vol_num_len$}",
                     volume,
@@ -66,7 +82,7 @@ pub fn build_volume(
                 1,
                 "Internal error: individual chapter's volume does contain exactly 1 chapter!"
             );
-            output.join(format!("{}", chapters[0].2))
+            output.join(chapters[0].2.to_string())
         }
 
         BuildMethod::Single(_) => output.with_extension(""),
@@ -92,10 +108,10 @@ pub fn build_volume(
 
     // Fail if the target file already exists and '--overwrite' has not been specified
     if staging_path.exists() && !enc_opts.overwrite {
-        Err(EncodingError::OutputVolumeFileAlreadyExists(
+        return Err(EncodingError::OutputVolumeFileAlreadyExists(
             volume,
-            staging_path.clone(),
-        ))?
+            staging_path,
+        ));
     }
 
     // Create a ZIP file to this path
@@ -369,25 +385,25 @@ pub fn build_volume(
     // Check if final path exists
     if complete_path.exists() {
         if complete_path.exists() && !enc_opts.overwrite {
-            Err(EncodingError::OutputVolumeFileAlreadyExists(
+            return Err(EncodingError::OutputVolumeFileAlreadyExists(
                 volume,
-                complete_path.clone(),
-            ))?
+                complete_path,
+            ));
         }
 
         if !complete_path.is_dir() {
-            Err(EncodingError::OutputVolumeFileIsADirectory(
+            return Err(EncodingError::OutputVolumeFileIsADirectory(
                 volume,
-                complete_path.clone(),
-            ))?
+                complete_path,
+            ));
         }
 
         if let Err(err) = fs::remove_file(&complete_path) {
-            Err(EncodingError::FailedToOverwriteOutputVolumeFile(
+            return Err(EncodingError::FailedToOverwriteOutputVolumeFile(
                 volume,
-                complete_path.clone(),
+                complete_path,
                 err,
-            ))?
+            ));
         }
     }
 

@@ -101,7 +101,7 @@ fn take_num(chars: &mut Peekable<Chars>) -> Vec<u8> {
 
                 let num = code as u8 - 0x30;
 
-                if num != 0 || digits.len() != 0 {
+                if num != 0 || !digits.is_empty() {
                     digits.push(code as u8 - 0x30);
                 }
             }
@@ -165,7 +165,7 @@ pub fn natural_cmp(left: &str, right: &str) -> Ordering {
 
                     match lc.cmp(&rc) {
                         Ordering::Equal => continue,
-                        ordering @ _ => ordering,
+                        ordering => ordering,
                     }
                 }
             }
@@ -189,15 +189,13 @@ pub fn readdir_files_recursive<F: Fn(&PathBuf) -> bool>(
         let path = entry.map_err(RecursiveFilesSearchErr::IOError)?.path();
 
         if !path.exists() {
-            return Err(RecursiveFilesSearchErr::InvalidFileName(path.to_path_buf()));
+            return Err(RecursiveFilesSearchErr::InvalidFileName(path));
         }
 
         if path.is_dir() {
             files.extend_from_slice(&readdir_files_recursive(&path, filter)?);
-        } else if path.is_file() {
-            if filter.map(|filter| filter(&path)).unwrap_or(true) {
-                files.push(path);
-            }
+        } else if path.is_file() && filter.map(|filter| filter(&path)).unwrap_or(true) {
+            files.push(path);
         }
     }
 
@@ -217,7 +215,7 @@ pub fn natural_paths_cmp(a: &PathBuf, b: &PathBuf) -> Ordering {
                 &b_cp.as_os_str().to_string_lossy(),
             ) {
                 Ordering::Equal => continue,
-                ordering @ _ => ordering,
+                ordering => ordering,
             },
             (Some(_), None) => Ordering::Greater,
             (None, Some(_)) => Ordering::Less,
